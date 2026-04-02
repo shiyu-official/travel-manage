@@ -4,9 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>市区町村訪問記録</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+1:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=M+PLUS+1:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap');
 
   :root {
     --bg-dark: #0f1923;
@@ -504,6 +506,7 @@
   <!-- ヘッダー検索バー -->
   <div id="header-search-wrap">
     <input id="header-search-input" type="text" placeholder="🔍 スポットを検索..."
+           autocomplete="off" spellcheck="false"
            onkeydown="if(event.key==='Enter')doHeaderSearch()"
            oninput="if(!this.value.trim())closeHeaderDropdown()">
     <button id="header-search-btn" onclick="doHeaderSearch()">🔍</button>

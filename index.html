@@ -171,7 +171,6 @@
     font-size: 12px; margin-bottom: 10px;
     display: flex; align-items: center; gap: 4px;
   }
-  .popup-status.visited { color: #5a9a7a; }
   .popup-status.unvisited { color: #ff8c5a; }
   .popup-actions { display: flex; flex-direction: column; gap: 6px; }
   .popup-actions button {
@@ -524,10 +523,10 @@
 // ══════════════════════════════════════
 const CONFIG = {
   props: {
-    prefName: "N03_001",
-    cityName: "N03_004",
-    cityCode: "N03_007",
-    gunName:  "N03_003",
+    prefName: "KEN",
+    cityName: "SIKUCHOSON",
+    cityCode: "JCODE",
+    gunName:  "GUN",
   },
   routing: {
     bruteForceThreshold: 8,
@@ -535,7 +534,6 @@ const CONFIG = {
     inwardOffsetMeters: 100,
   },
   style: {
-    visited:   { color: "#3d7a5e", weight: 1, fillColor: "#2a5a45", fillOpacity: 0.3 },
     unvisited: { color: "#ff8c5a", weight: 1.2, fillColor: "#ff6b35", fillOpacity: 0.4 },
     highlight: { color: "#ffcc00", weight: 3, fillColor: "#ffcc00", fillOpacity: 0.25 },
   },
@@ -545,7 +543,7 @@ const CONFIG = {
 // ══════════════════════════════════════
 // APP STATE
 // ══════════════════════════════════════
-let map, visitedLayer, unvisitedLayer, visitedData, unvisitedData;
+let map, unvisitedLayer, unvisitedData;
 let currentPos = null, currentMarker = null, accuracyCircle = null, watchId = null;
 let tourList = [], tourResult = null, tourMarkers = [], tourLines = [];
 let goalPoint = null;           // { latlng: [lat,lng], name: string }
@@ -568,11 +566,7 @@ document.addEventListener('DOMContentLoaded', () => {
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
 
   // ── Production: fetch real GeoJSON ──
-  Promise.all([
-    fetch('data/visited.geojson').then(r => r.json()),
-    fetch('data/unvisited.geojson').then(r => r.json()),
-  ]).then(([v, u]) => {
-    visitedData = v;
+  fetch('data/unvisited.geojson').then(r => r.json()).then(u => {
     unvisitedData = u;
     renderLayers();
     updateStats();
@@ -644,10 +638,8 @@ function bindPopup(feature, layer, isVisited) {
 }
 
 function updateStats() {
-  const v = visitedData.features.length;
-  const total = v + unvisitedData.features.length;
-  const pct = total > 0 ? ((v / total) * 100).toFixed(1) : '0.0';
-  document.getElementById('stats-badge').textContent = `${v} / ${total}  (${pct}%)`;
+  const total = unvisitedData.features.length;
+  document.getElementById('stats-badge').textContent = `未訪問 ${total}件`;
 }
 
 // ══════════════════════════════════════
@@ -1437,8 +1429,7 @@ function getTotalStopCount() {
 // HELPERS
 // ══════════════════════════════════════
 function findFeatureByCode(code) {
-  return visitedData.features.find(f => f.properties[CONFIG.props.cityCode] === code)
-    || unvisitedData.features.find(f => f.properties[CONFIG.props.cityCode] === code) || null;
+  return unvisitedData.features.find(f => f.properties[CONFIG.props.cityCode] === code) || null;
 }
 
 function highlightFeature(feature) {

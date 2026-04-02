@@ -591,7 +591,7 @@ const CONFIG = {
 // ══════════════════════════════════════
 // APP STATE
 // ══════════════════════════════════════
-let map, unvisitedLayer, unvisitedData;
+let map, unvisitedLayer, visitedData, unvisitedData;
 let currentPos = null, currentMarker = null, accuracyCircle = null, watchId = null;
 let tourList = [], tourResult = null, tourMarkers = [], tourLines = [];
 let goalPoint = null;           // { latlng: [lat,lng], name: string }
@@ -614,7 +614,12 @@ document.addEventListener('DOMContentLoaded', () => {
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
 
   // ── Production: fetch real GeoJSON ──
-  fetch('data/unvisited.geojson').then(r => r.json()).then(u => {
+  // visited は描画しないがルート計算用に保持
+  Promise.all([
+    fetch('data/visited.geojson').then(r => r.json()).catch(() => ({ features: [] })),
+    fetch('data/unvisited.geojson').then(r => r.json()),
+  ]).then(([v, u]) => {
+    visitedData = v;
     unvisitedData = u;
     renderLayers();
     updateStats();
@@ -1510,7 +1515,8 @@ function getTotalStopCount() {
 // HELPERS
 // ══════════════════════════════════════
 function findFeatureByCode(code) {
-  return unvisitedData.features.find(f => f.properties[CONFIG.props.cityCode] === code) || null;
+  return unvisitedData.features.find(f => f.properties[CONFIG.props.cityCode] === code)
+    || visitedData.features.find(f => f.properties[CONFIG.props.cityCode] === code) || null;
 }
 
 function highlightFeature(feature) {

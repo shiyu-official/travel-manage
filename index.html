@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>市区町村訪問記録</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=M+PLUS+1:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  :root {
+    --bg-dark: #0f1923;
+    --bg-panel: #1a2733;
+    --accent: #00e5a0;
+    --accent-dim: #00b37d;
+    --text-primary: #e8f0f5;
+    --text-secondary: #8a9fae;
+    --text-muted: #5a7080;
+    --danger: #ff5c6a;
+    --shadow: 0 4px 24px rgba(0,0,0,0.5);
+    --radius: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'M PLUS 1', sans-serif;
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    overflow: hidden;
+    height: 100dvh;
+    width: 100vw;
+  }
+
+  #header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: linear-gradient(180deg, var(--bg-dark) 0%, rgba(15,25,35,0.92) 100%);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(0,229,160,0.15);
+  }
+
+  #header .logo {
+    font-weight: 800; font-size: 15px;
+    letter-spacing: 0.5px; color: var(--accent);
+    display: flex; align-items: center; gap: 6px;
+  }
+  #header .logo svg { width: 20px; height: 20px; }
+
+  #stats-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; font-weight: 600;
+    background: rgba(0,229,160,0.12);
+    border: 1px solid rgba(0,229,160,0.25);
+    padding: 4px 10px; border-radius: 20px;
+    color: var(--accent); white-space: nowrap;
+  }
+
+  #map {
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%; z-index: 1;
+    background: var(--bg-dark);
+  }
+
+  #btn-locate {
+    position: fixed; bottom: 24px; right: 16px;
+    z-index: 1000;
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    border: 2px solid rgba(0,229,160,0.4);
+    background: var(--bg-panel);
+    color: var(--accent); font-size: 20px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; box-shadow: var(--shadow);
+    transition: all 0.2s;
+  }
+  #btn-locate:active { transform: scale(0.92); }
+  #btn-locate.active { border-color: var(--accent); background: rgba(0,229,160,0.15); }
+
+  /* ── Tour Panel ── */
+  #tour-panel {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    z-index: 1001;
+    background: var(--bg-panel);
+    border-top: 1px solid rgba(0,229,160,0.2);
+    border-radius: 16px 16px 0 0;
+    transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+    max-height: 55vh; overflow-y: auto;
+    box-shadow: 0 -8px 40px rgba(0,0,0,0.6);
+  }
+  #tour-panel.visible { transform: translateY(0); }
+
+  #tour-panel .panel-header {
+    position: sticky; top: 0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px 10px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  #tour-panel .panel-header h3 { font-size: 14px; font-weight: 600; }
+  #tour-panel .panel-header .close-btn {
+    width: 28px; height: 28px; border-radius: 50%; border: none;
+    background: rgba(255,255,255,0.08); color: var(--text-secondary);
+    font-size: 16px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .tour-list { padding: 4px 16px; }
+
+  .tour-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 13px;
+  }
+  .tour-item .num {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--accent); color: var(--bg-dark);
+    font-weight: 800; font-size: 11px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-right: 10px;
+  }
+  .tour-item .name { flex: 1; }
+  .tour-item .dist {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--text-muted); margin-right: 8px;
+  }
+  .tour-item .remove-btn {
+    width: 24px; height: 24px; border-radius: 50%; border: none;
+    background: rgba(255,92,106,0.12); color: var(--danger);
+    font-size: 14px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .tour-actions {
+    padding: 12px 16px 20px; display: flex; gap: 8px;
+  }
+  .tour-actions button {
+    flex: 1; padding: 12px; border-radius: 10px; border: none;
+    font-family: 'M PLUS 1', sans-serif;
+    font-weight: 600; font-size: 13px; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-primary { background: var(--accent); color: var(--bg-dark); }
+  .btn-primary:active { background: var(--accent-dim); }
+  .btn-secondary { background: rgba(255,255,255,0.08); color: var(--text-secondary); }
+  .btn-gmaps { background: linear-gradient(135deg, #4285f4, #34a853); color: #fff; }
+
+  .tour-total {
+    padding: 0 16px 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; color: var(--text-muted); text-align: right;
+  }
+
+  /* ── Popup ── */
+  .leaflet-popup-content-wrapper {
+    background: var(--bg-panel) !important;
+    color: var(--text-primary) !important;
+    border-radius: var(--radius) !important;
+    box-shadow: var(--shadow) !important;
+    border: 1px solid rgba(0,229,160,0.2);
+  }
+  .leaflet-popup-tip { background: var(--bg-panel) !important; }
+  .popup-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+  .popup-status {
+    font-size: 12px; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .popup-status.visited { color: #5a9a7a; }
+  .popup-status.unvisited { color: #ff8c5a; }
+  .popup-actions { display: flex; flex-direction: column; gap: 6px; }
+  .popup-actions button {
+    width: 100%; padding: 8px 12px; border-radius: 8px; border: none;
+    font-family: 'M PLUS 1', sans-serif;
+    font-weight: 600; font-size: 12px; cursor: pointer;
+  }
+  .popup-nav-btn { background: linear-gradient(135deg, #4285f4, #34a853); color: #fff; }
+  .popup-tour-btn {
+    background: rgba(0,229,160,0.15); color: var(--accent);
+    border: 1px solid rgba(0,229,160,0.3) !important;
+  }
+  .popup-tour-btn.added {
+    background: rgba(255,92,106,0.12); color: var(--danger);
+    border: 1px solid rgba(255,92,106,0.3) !important;
+  }
+  .popup-inside-msg { font-size: 11px; color: var(--accent); padding: 6px 0 0; }
+
+  /* ── Loading ── */
+  #loading {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--bg-dark);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 16px;
+    transition: opacity 0.5s;
+  }
+  #loading.hidden { opacity: 0; pointer-events: none; }
+  #loading .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid rgba(0,229,160,0.2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  #loading p { font-size: 13px; color: var(--text-secondary); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .leaflet-tile-pane { filter: brightness(0.7) contrast(1.1) saturate(0.5); }
+
+  .toast {
+    position: fixed; top: 60px; left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    z-index: 2000;
+    background: var(--bg-panel); color: var(--text-primary);
+    padding: 10px 20px; border-radius: 10px;
+    font-size: 13px; font-weight: 600;
+    box-shadow: var(--shadow);
+    border: 1px solid rgba(0,229,160,0.2);
+    opacity: 0; transition: all 0.3s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── Custom spot / Goal inputs ── */
+  .tour-section {
+    padding: 8px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .tour-section-label {
+    font-size: 11px; font-weight: 600;
+    color: var(--text-muted); letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+  .tour-spot-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 0;
+  }
+  .tour-spot-row .spot-icon {
+    width: 22px; height: 22px; border-radius: 50%;
+    font-size: 11px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .spot-icon.goal { background: #4285f4; color: #fff; }
+  .spot-icon.custom { background: #9c27b0; color: #fff; }
+  .tour-spot-row .spot-name {
+    flex: 1; font-size: 13px; color: var(--text-primary);
+  }
+  .tour-spot-row .remove-btn {
+    width: 24px; height: 24px; border-radius: 50%; border: none;
+    background: rgba(255,92,106,0.12); color: var(--danger);
+    font-size: 14px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .add-spot-btn {
+    width: 100%; padding: 8px; margin-top: 4px;
+    border-radius: 8px; border: 1px dashed rgba(255,255,255,0.15);
+    background: transparent; color: var(--text-muted);
+    font-family: 'M PLUS 1', sans-serif; font-size: 12px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .add-spot-btn:active { background: rgba(255,255,255,0.05); }
+
+  .spot-note {
+    font-size: 10px; color: var(--text-muted);
+    padding: 4px 0 0; font-style: italic;
+  }
+
+  /* ── Popup 3-action buttons ── */
+  .popup-action-group {
+    display: flex; flex-direction: column; gap: 5px; margin-top: 8px;
+  }
+  .popup-action-row {
+    display: flex; gap: 5px;
+  }
+  .popup-action-row .popup-tour-btn,
+  .popup-action-row .popup-nav-btn {
+    flex: 1;
+  }
+  .popup-spot-btn {
+    width: 100%; padding: 7px 10px; border-radius: 8px; border: none;
+    font-family: 'M PLUS 1', sans-serif;
+    font-weight: 600; font-size: 11px; cursor: pointer;
+    background: rgba(156,33,176,0.15); color: #c77dff;
+    border: 1px solid rgba(156,33,176,0.3) !important;
+  }
+  .popup-goal-btn {
+    width: 100%; padding: 7px 10px; border-radius: 8px; border: none;
+    font-family: 'M PLUS 1', sans-serif;
+    font-weight: 600; font-size: 11px; cursor: pointer;
+    background: rgba(66,133,244,0.15); color: #7aadff;
+    border: 1px solid rgba(66,133,244,0.3) !important;
+  }
+
+  /* ── Reorder buttons ── */
+  .reorder-btns {
+    display: flex; flex-direction: column; gap: 2px; margin-right: 4px;
+  }
+  .reorder-btn {
+    width: 20px; height: 18px; border-radius: 4px; border: none;
+    background: rgba(255,255,255,0.07); color: var(--text-muted);
+    font-size: 10px; cursor: pointer; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .reorder-btn:hover { background: rgba(255,255,255,0.15); color: var(--text-primary); }
+  .reorder-btn:disabled { opacity: 0.2; cursor: default; }
+
+  /* ── Spot search (Nominatim) ── */
+  .search-section {
+    padding: 10px 16px 6px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  .search-section-label {
+    font-size: 11px; font-weight: 600; color: var(--text-muted);
+    letter-spacing: 0.5px; margin-bottom: 6px;
+  }
+  .search-row {
+    display: flex; gap: 6px; align-items: stretch;
+  }
+  .search-input {
+    flex: 1; padding: 8px 10px; border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.06); color: var(--text-primary);
+    font-family: 'M PLUS 1', sans-serif; font-size: 12px;
+    outline: none; transition: border-color 0.15s;
+  }
+  .search-input:focus { border-color: rgba(0,229,160,0.4); }
+  .search-input::placeholder { color: var(--text-muted); }
+  .search-btn {
+    padding: 8px 12px; border-radius: 8px; border: none;
+    background: rgba(0,229,160,0.15); color: var(--accent);
+    font-family: 'M PLUS 1', sans-serif; font-weight: 600; font-size: 12px;
+    cursor: pointer; white-space: nowrap; transition: all 0.15s;
+    border: 1px solid rgba(0,229,160,0.25) !important;
+  }
+  .search-btn:active { background: rgba(0,229,160,0.25); }
+  .search-btn:disabled { opacity: 0.4; cursor: default; }
+  .search-results {
+    margin-top: 6px; display: flex; flex-direction: column; gap: 4px;
+  }
+  .search-result-item {
+    padding: 8px 10px; border-radius: 8px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    cursor: pointer; transition: background 0.15s;
+  }
+  .search-result-item:hover { background: rgba(255,255,255,0.08); }
+  .search-result-name {
+    font-size: 12px; font-weight: 600; color: var(--text-primary);
+    margin-bottom: 2px;
+  }
+  .search-result-addr {
+    font-size: 10px; color: var(--text-muted); margin-bottom: 4px;
+  }
+  .search-result-actions {
+    display: flex; gap: 4px;
+  }
+  .search-result-actions button {
+    flex: 1; padding: 4px 6px; border-radius: 6px; border: none;
+    font-family: 'M PLUS 1', sans-serif; font-weight: 600; font-size: 10px;
+    cursor: pointer;
+  }
+  .search-add-via {
+    background: rgba(156,33,176,0.15); color: #c77dff;
+    border: 1px solid rgba(156,33,176,0.25) !important;
+  }
+  .search-add-goal {
+    background: rgba(66,133,244,0.15); color: #7aadff;
+    border: 1px solid rgba(66,133,244,0.25) !important;
+  }
+  .search-empty {
+    font-size: 11px; color: var(--text-muted);
+    text-align: center; padding: 8px 0; font-style: italic;
+  }
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <p>地図データを読み込み中...</p>
+</div>
+
+<header id="header">
+  <div class="logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+      <circle cx="12" cy="10" r="3"/>
+    </svg>
+    訪問記録
+  </div>
+  <div id="stats-badge">-- / -- (--.--%)</div>
+</header>
+
+<div id="map"></div>
+<button id="btn-locate" title="現在地" onclick="toggleTracking()">◎</button>
+
+<div id="tour-panel">
+  <div class="panel-header">
+    <h3 id="tour-title">巡回リスト（0件）</h3>
+    <button class="close-btn" onclick="closeTourPanel()">×</button>
+  </div>
+
+  <!-- Custom spots (mid-route) -->
+  <div class="tour-section" id="custom-spots-section" style="display:none;">
+    <div class="tour-section-label">📌 経由スポット</div>
+    <div id="custom-spots-list"></div>
+  </div>
+
+  <!-- City tour list -->
+  <div class="tour-list" id="tour-list"></div>
+  <div class="tour-total" id="tour-total"></div>
+
+  <!-- Goal -->
+  <div class="tour-section" id="goal-section">
+    <div class="tour-section-label">🏁 ゴール地点</div>
+    <div id="goal-display"></div>
+    <p class="spot-note" id="goal-hint">地図を長押しで設定、未設定なら最後の市区町村が終点</p>
+  </div>
+
+  <div class="tour-section">
+    <button class="add-spot-btn" onclick="startSpotMode('custom')">＋ 任意の経由地を地図で追加</button>
+    <button class="add-spot-btn" style="margin-top:4px" onclick="startSpotMode('goal')">🏁 ゴール地点を地図で設定</button>
+  </div>
+
+  <div class="tour-actions" id="tour-actions">
+    <button class="btn-primary" onclick="calculateTour()">巡回ルート計算</button>
+    <button class="btn-secondary" onclick="clearTour()">クリア</button>
+  </div>
+  <div class="tour-actions" id="tour-gmaps-actions" style="display:none;">
+    <button class="btn-gmaps" onclick="openGoogleMapsTour()">🗺 Google Maps で開く</button>
+    <button class="btn-secondary" onclick="resetTourCalc()">🔄 再計算</button>
+  </div>
+
+  <!-- Nominatim spot search -->
+  <div class="search-section">
+    <div class="search-section-label">🔍 スポット検索</div>
+    <div class="search-row">
+      <input class="search-input" id="search-input" type="text"
+             placeholder="例: 東京駅、〇〇IC、コンビニ 新橋"
+             onkeydown="if(event.key==='Enter')doSpotSearch()">
+      <button class="search-btn" id="search-btn" onclick="doSpotSearch()">検索</button>
+    </div>
+    <div class="search-results" id="search-results"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/@turf/turf@7/turf.min.js"></script>
+<script>
+// ══════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════
+const CONFIG = {
+  props: {
+    prefName: "N03_001",
+    cityName: "N03_004",
+    cityCode: "N03_007",
+    gunName:  "N03_003",
+  },
+  routing: {
+    bruteForceThreshold: 8,
+    maxWaypoints: 8,           // Google Maps 経由地上限（出発地+経由8+目的地=10ストップ）
+    inwardOffsetMeters: 100,
+  },
+  style: {
+    visited:   { color: "#3d7a5e", weight: 1, fillColor: "#2a5a45", fillOpacity: 0.3 },
+    unvisited: { color: "#ff8c5a", weight: 1.2, fillColor: "#ff6b35", fillOpacity: 0.4 },
+    highlight: { color: "#ffcc00", weight: 3, fillColor: "#ffcc00", fillOpacity: 0.25 },
+  },
+};
+
+
+// ══════════════════════════════════════
+// APP STATE
+// ══════════════════════════════════════
+let map, visitedLayer, unvisitedLayer, visitedData, unvisitedData;
+let currentPos = null, currentMarker = null, accuracyCircle = null, watchId = null;
+let tourList = [], tourResult = null, tourMarkers = [], tourLines = [];
+let goalPoint = null;           // { latlng: [lat,lng], name: string }
+let customSpots = [];           // [{ latlng: [lat,lng], name: string, coords: [lng,lat] }]
+let spotMode = null;            // 'goal' | 'custom' | null
+let searchPreviewMarkers = [];  // Nominatim候補の一時プレビューマーカー
+let staticSpotMarkers = [];     // 計算前の経由地・ゴールの常時マーカー
+
+// ══════════════════════════════════════
+// INIT
+// ══════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  map = L.map('map', {
+    preferCanvas: true, zoomControl: false, attributionControl: false,
+  }).setView([35.68, 139.76], 10);
+
+  L.control.zoom({ position: 'topright' }).addTo(map);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
+
+  // ── Production: fetch real GeoJSON ──
+  Promise.all([
+    fetch('data/visited.geojson').then(r => r.json()),
+    fetch('data/unvisited.geojson').then(r => r.json()),
+  ]).then(([v, u]) => {
+    visitedData = v;
+    unvisitedData = u;
+    renderLayers();
+    updateStats();
+    document.getElementById('loading').classList.add('hidden');
+  }).catch(err => {
+    console.error('GeoJSON読み込みエラー:', err);
+    document.querySelector('#loading p').textContent = 'データの読み込みに失敗しました';
+  });
+
+  // Map click for adding custom spots / goal
+  map.on('click', onMapClickForSpot);
+});
+
+// ══════════════════════════════════════
+// RENDER LAYERS
+// ══════════════════════════════════════
+function renderLayers() {
+  visitedLayer = L.geoJSON(visitedData, {
+    style: () => CONFIG.style.visited,
+    onEachFeature: (f, l) => bindPopup(f, l, true),
+  }).addTo(map);
+
+  unvisitedLayer = L.geoJSON(unvisitedData, {
+    style: () => CONFIG.style.unvisited,
+    onEachFeature: (f, l) => bindPopup(f, l, false),
+  }).addTo(map);
+}
+
+function bindPopup(feature, layer, isVisited) {
+  layer.on('click', (e) => {
+    const p = feature.properties;
+    const pref = p[CONFIG.props.prefName] || '';
+    const city = p[CONFIG.props.cityName] || '';
+    const code = p[CONFIG.props.cityCode] || '';
+    const inTour = tourList.some(t => t.feature.properties[CONFIG.props.cityCode] === code);
+    const clickLat = e.latlng.lat.toFixed(6);
+    const clickLng = e.latlng.lng.toFixed(6);
+
+    let insideMsg = '';
+    if (currentPos && turf.booleanPointInPolygon(turf.point(currentPos), feature)) {
+      insideMsg = '<div class="popup-inside-msg">📍 現在この市区町村内にいます</div>';
+    }
+
+    L.popup({ maxWidth: 270 })
+      .setLatLng(layer.getBounds().getCenter())
+      .setContent(`
+        <div class="popup-title">${pref} ${city}</div>
+        <div class="popup-status ${isVisited ? 'visited' : 'unvisited'}">
+          ${isVisited ? '✅ 訪問済み' : '⬜ 未訪問'}
+        </div>
+        ${insideMsg}
+        <div class="popup-action-group">
+          <button class="popup-nav-btn" onclick="navigateTo('${code}')">🚗 境界へナビ</button>
+          <button class="popup-tour-btn ${inTour ? 'added' : ''}"
+                  onclick="toggleTourItem('${code}')">
+            ${inTour ? '− 巡回リストから削除' : '＋ 巡回リストに追加'}
+          </button>
+          <div class="popup-action-row">
+            <button class="popup-spot-btn"
+                    onclick="addClickAsSpot(${clickLat},${clickLng})">📍 この場所を経由</button>
+            <button class="popup-spot-btn"
+                    onclick="addBoundaryAsSpot('${code}')">🗺 この地域を経由</button>
+          </div>
+          <button class="popup-goal-btn"
+                  onclick="addClickAsGoal(${clickLat},${clickLng})">🏁 この場所をゴールに</button>
+        </div>`)
+      .openOn(map);
+  });
+}
+
+function updateStats() {
+  const v = visitedData.features.length;
+  const total = v + unvisitedData.features.length;
+  const pct = total > 0 ? ((v / total) * 100).toFixed(1) : '0.0';
+  document.getElementById('stats-badge').textContent = `${v} / ${total}  (${pct}%)`;
+}
+
+// ══════════════════════════════════════
+// GEOLOCATION
+// ══════════════════════════════════════
+function toggleTracking() {
+  if (watchId !== null) { stopTracking(); return; }
+  if (!navigator.geolocation) { showToast('位置情報を利用できません'); return; }
+  document.getElementById('btn-locate').classList.add('active');
+  showToast('現在地を取得中...');
+  startWatch();
+}
+
+function startWatch() {
+  if (watchId !== null) return;
+  watchId = navigator.geolocation.watchPosition(
+    onPositionUpdate, onPositionError,
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
+  );
+}
+
+function stopTracking() {
+  if (watchId !== null && watchId !== -1) navigator.geolocation.clearWatch(watchId);
+  watchId = null;
+  document.getElementById('btn-locate').classList.remove('active');
+  if (currentMarker) { map.removeLayer(currentMarker); currentMarker = null; }
+  if (accuracyCircle) { map.removeLayer(accuracyCircle); accuracyCircle = null; }
+  currentPos = null;
+}
+
+function onPositionUpdate(pos) {
+  const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+  currentPos = [lng, lat];
+  if (currentMarker) {
+    currentMarker.setLatLng([lat, lng]);
+    accuracyCircle.setLatLng([lat, lng]).setRadius(accuracy);
+  } else {
+    currentMarker = L.circleMarker([lat, lng], {
+      radius: 8, color: '#fff', weight: 3, fillColor: '#4285f4', fillOpacity: 1,
+    }).addTo(map);
+    accuracyCircle = L.circle([lat, lng], {
+      radius: accuracy, color: '#4285f4', weight: 1, fillColor: '#4285f4', fillOpacity: 0.1,
+    }).addTo(map);
+    map.setView([lat, lng], 13);
+  }
+}
+
+function onPositionError(err) {
+  if (err.code === 1) { showToast('位置情報の許可が必要です'); stopTracking(); return; }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (watchId === null) return;
+  if (document.hidden) {
+    if (watchId !== -1) navigator.geolocation.clearWatch(watchId);
+    watchId = -1;
+  } else if (watchId === -1) {
+    watchId = null; startWatch();
+  }
+});
+
+// ══════════════════════════════════════
+// NAVIGATE TO (boundary nearest point)
+// ══════════════════════════════════════
+function navigateTo(cityCode) {
+  map.closePopup();
+  const feature = findFeatureByCode(cityCode);
+  if (!feature) return;
+  const pos = currentPos || [139.767, 35.681];
+  if (!currentPos) showToast('現在地未取得：東京駅を起点とします');
+
+  const result = findNearestBoundaryPoint(turf.point(pos), feature);
+  if (result.inside) { showToast('現在この市区町村内にいます！'); return; }
+
+  const [destLng, destLat] = result.point;
+  window.open(
+    `https://www.google.com/maps/dir/?api=1&origin=${pos[1]},${pos[0]}&destination=${destLat},${destLng}&travelmode=driving`,
+    '_blank'
+  );
+}
+
+// ══════════════════════════════════════
+// BOUNDARY NEAREST POINT + INWARD OFFSET
+// ══════════════════════════════════════
+function findNearestBoundaryPoint(pt, polygon) {
+  if (turf.booleanPointInPolygon(pt, polygon)) return { inside: true, point: null, distance: 0 };
+
+  const line = turf.polygonToLine(polygon);
+  let nearest;
+  if (line.type === 'FeatureCollection') {
+    let best = null;
+    for (const seg of line.features) {
+      const n = turf.nearestPointOnLine(seg, pt);
+      if (!best || n.properties.dist < best.properties.dist) best = n;
+    }
+    nearest = best;
+  } else {
+    nearest = turf.nearestPointOnLine(line, pt);
+  }
+
+  // 境界点を内側にオフセット（GPSブレ対策）
+  const offsetPoint = offsetPointInward(
+    nearest.geometry.coordinates,
+    polygon,
+    CONFIG.routing.inwardOffsetMeters
+  );
+
+  return {
+    inside: false,
+    point: offsetPoint,
+    distance: nearest.properties.dist,
+  };
+}
+
+// 境界点からポリゴン重心方向に指定メートルだけ内側にずらす
+function offsetPointInward(boundaryCoords, polygon, meters) {
+  if (meters <= 0) return boundaryCoords;
+
+  const centroid = turf.centroid(polygon);
+  const bPt = turf.point(boundaryCoords);
+
+  // 境界点 → 重心 方向の角度を算出
+  const bearing = turf.bearing(bPt, centroid);
+
+  // その方向に meters 分だけ移動
+  const offset = turf.destination(bPt, meters / 1000, bearing);
+
+  return offset.geometry.coordinates;
+}
+
+// ══════════════════════════════════════
+// TOUR
+// ══════════════════════════════════════
+function toggleTourItem(cityCode) {
+  map.closePopup();
+  const idx = tourList.findIndex(t => t.feature.properties[CONFIG.props.cityCode] === cityCode);
+  if (idx >= 0) {
+    resetLayerStyle(tourList[idx].feature);
+    tourList.splice(idx, 1);
+    showToast('巡回リストから削除しました');
+  } else {
+    if (getTotalStopCount() >= CONFIG.routing.maxWaypoints) {
+      showToast(`経由地の合計が上限${CONFIG.routing.maxWaypoints}件です`); return;
+    }
+    const feature = findFeatureByCode(cityCode);
+    if (!feature) return;
+    tourList.push({ feature });
+    highlightFeature(feature);
+    showToast('巡回リストに追加しました');
+  }
+  tourResult = null; clearTourVisuals(); updateTourPanel();
+}
+
+function clearTour() {
+  tourList.forEach(t => resetLayerStyle(t.feature));
+  tourList = []; tourResult = null;
+  goalPoint = null; customSpots = []; spotMode = null;
+  clearTourVisuals(); clearStaticSpotMarkers(); updateTourPanel();
+}
+
+function closeTourPanel() {
+  document.getElementById('tour-panel').classList.remove('visible');
+  clearSearchPreviewMarkers();
+  document.getElementById('search-results').innerHTML = '';
+}
+
+function updateTourPanel() {
+  const panel = document.getElementById('tour-panel');
+  const listEl = document.getElementById('tour-list');
+  const titleEl = document.getElementById('tour-title');
+  const totalEl = document.getElementById('tour-total');
+  const calcAct = document.getElementById('tour-actions');
+  const gmapsAct = document.getElementById('tour-gmaps-actions');
+  const goalDisplay = document.getElementById('goal-display');
+  const goalHint = document.getElementById('goal-hint');
+  const customSection = document.getElementById('custom-spots-section');
+  const customList = document.getElementById('custom-spots-list');
+
+  const total = getTotalStopCount();
+  if (tourList.length === 0 && customSpots.length === 0 && !goalPoint) {
+    panel.classList.remove('visible'); return;
+  }
+  panel.classList.add('visible');
+
+  // Custom spots section
+  if (customSpots.length > 0) {
+    customSection.style.display = 'block';
+    customList.innerHTML = customSpots.map((s, i) => `
+      <div class="tour-spot-row">
+        <span class="spot-icon custom">📌</span>
+        <span class="spot-name">${s.name}</span>
+        <button class="remove-btn" onclick="removeCustomSpot(${i})">×</button>
+      </div>`).join('');
+  } else {
+    customSection.style.display = 'none';
+  }
+
+  // Goal section
+  if (goalPoint) {
+    goalDisplay.innerHTML = `
+      <div class="tour-spot-row">
+        <span class="spot-icon goal">🏁</span>
+        <span class="spot-name">${goalPoint.name}</span>
+        <button class="remove-btn" onclick="removeGoal()">×</button>
+      </div>`;
+    goalHint.style.display = 'none';
+  } else {
+    goalDisplay.innerHTML = '';
+    goalHint.style.display = 'block';
+  }
+
+  if (tourResult) {
+    titleEl.textContent = `巡回ルート（${tourResult.length}件）`;
+    listEl.innerHTML = tourResult.map((s, i) => {
+      const name = s.name || `${s.feature.properties[CONFIG.props.prefName]} ${s.feature.properties[CONFIG.props.cityName]}`;
+      const code = s.feature ? s.feature.properties[CONFIG.props.cityCode] : null;
+      const isFirst = i === 0, isLast = i === tourResult.length - 1;
+      return `<div class="tour-item">
+        <div class="reorder-btns">
+          <button class="reorder-btn" onclick="moveTourResult(${i},-1)" ${isFirst ? 'disabled' : ''}>▲</button>
+          <button class="reorder-btn" onclick="moveTourResult(${i},+1)" ${isLast ? 'disabled' : ''}>▼</button>
+        </div>
+        <span class="num">${i+1}</span>
+        <span class="name">${name}</span>
+        <span class="dist">${s.distance.toFixed(1)}km</span>
+        ${code ? `<button class="remove-btn" onclick="toggleTourItem('${code}')">×</button>` : '<span style="width:24px"></span>'}
+      </div>`;
+    }).join('');
+    let totalDist = tourResult.reduce((s,r)=>s+r.distance,0);
+    let suffix = '';
+    if (goalPoint && tourResult.length > 0) {
+      const lastPt = tourResult[tourResult.length-1].entryPoint;
+      const gDist = turf.distance(turf.point(lastPt), turf.point(goalPoint.coords));
+      totalDist += gDist;
+      suffix = ` → 🏁`;
+    }
+    totalEl.textContent = `合計直線距離: ${totalDist.toFixed(1)}km${suffix} ※実道路はGMで確認`;
+    totalEl.style.display = 'block';
+    calcAct.style.display = 'none'; gmapsAct.style.display = 'flex';
+  } else {
+    titleEl.textContent = `巡回リスト（${tourList.length}件${customSpots.length ? ` + 経由${customSpots.length}` : ''}${goalPoint ? ' + ゴール' : ''})`;
+    listEl.innerHTML = tourList.map((t, i) => {
+      const p = t.feature.properties;
+      const isFirst = i === 0, isLast = i === tourList.length - 1;
+      return `<div class="tour-item">
+        <div class="reorder-btns">
+          <button class="reorder-btn" onclick="moveTourListItem(${i},-1)" ${isFirst ? 'disabled' : ''}>▲</button>
+          <button class="reorder-btn" onclick="moveTourListItem(${i},+1)" ${isLast ? 'disabled' : ''}>▼</button>
+        </div>
+        <span class="num">${i+1}</span>
+        <span class="name">${p[CONFIG.props.prefName]} ${p[CONFIG.props.cityName]}</span>
+        <span class="dist"></span>
+        <button class="remove-btn" onclick="toggleTourItem('${p[CONFIG.props.cityCode]}')">×</button>
+      </div>`;
+    }).join('');
+    totalEl.style.display = 'none';
+    calcAct.style.display = 'flex'; gmapsAct.style.display = 'none';
+  }
+  // 常に静的スポットマーカーを同期
+  renderStaticSpotMarkers();
+}
+
+function calculateTour() {
+  if (tourList.length === 0 && customSpots.length === 0) return;
+  const pos = currentPos || [139.767, 35.681];
+  if (!currentPos) showToast('現在地未取得：東京駅を起点とします');
+
+  // Build mixed list: city features + custom spots (as pseudo-features)
+  const items = [
+    ...tourList.map(t => ({ type: 'city', feature: t.feature })),
+    ...customSpots.map(s => ({
+      type: 'spot',
+      coords: s.coords,
+      name: s.name,
+    })),
+  ];
+
+  const start = turf.point(pos);
+  showToast('ルートを計算中...');
+  setTimeout(() => {
+    tourResult = items.length <= CONFIG.routing.bruteForceThreshold
+      ? bruteForceTourMixed(start, items) : nnTourMixed(start, items);
+    renderTourOnMap(pos);
+    updateTourPanel();
+    showToast('巡回ルートを計算しました');
+  }, 50);
+}
+
+function nnTourMixed(start, items) {
+  const rem = [...items], ordered = [];
+  let pos = start;
+  while (rem.length > 0) {
+    let bi = -1, bd = Infinity, bp = null, bItem = null;
+    for (let i = 0; i < rem.length; i++) {
+      const item = rem[i];
+      if (item.type === 'city') {
+        const r = findNearestBoundaryPoint(pos, item.feature);
+        const d = r.distance;
+        const p = r.inside ? turf.centroid(item.feature).geometry.coordinates : r.point;
+        if (d < bd) { bd=d; bi=i; bp=p; bItem=item; }
+      } else {
+        const d = turf.distance(pos, turf.point(item.coords));
+        if (d < bd) { bd=d; bi=i; bp=item.coords; bItem=item; }
+      }
+    }
+    ordered.push({
+      feature: bItem.type === 'city' ? bItem.feature : null,
+      name: bItem.type === 'spot' ? bItem.name : null,
+      entryPoint: bp,
+      distance: bd,
+    });
+    pos = turf.point(bp); rem.splice(bi, 1);
+  }
+  return ordered;
+}
+
+function bruteForceTourMixed(start, items) {
+  let best = null, bestD = Infinity;
+  for (const perm of permutations(items)) {
+    let d = 0, pos = start; const route = [];
+    for (const item of perm) {
+      let ep, dist;
+      if (item.type === 'city') {
+        const r = findNearestBoundaryPoint(pos, item.feature);
+        ep = r.inside ? turf.centroid(item.feature).geometry.coordinates : r.point;
+        dist = r.distance;
+      } else {
+        ep = item.coords;
+        dist = turf.distance(pos, turf.point(item.coords));
+      }
+      d += dist;
+      route.push({
+        feature: item.type === 'city' ? item.feature : null,
+        name: item.type === 'spot' ? item.name : null,
+        entryPoint: ep, distance: dist,
+      });
+      pos = turf.point(ep);
+    }
+    if (d < bestD) { bestD=d; best=route; }
+  }
+  return best;
+}
+
+function permutations(a) {
+  if (a.length <= 1) return [a];
+  const r = [];
+  for (let i = 0; i < a.length; i++) {
+    const rest = [...a.slice(0,i), ...a.slice(i+1)];
+    for (const p of permutations(rest)) r.push([a[i], ...p]);
+  }
+  return r;
+}
+
+function renderTourOnMap(startPos) {
+  clearTourVisuals();
+  if (!tourResult) return;
+  const pts = [startPos, ...tourResult.map(s => s.entryPoint)];
+  if (goalPoint) pts.push(goalPoint.coords);
+
+  for (let i = 0; i < pts.length - 1; i++) {
+    tourLines.push(L.polyline(
+      [[pts[i][1],pts[i][0]], [pts[i+1][1],pts[i+1][0]]],
+      { color:'#ffcc00', weight:2.5, dashArray:'8 6', opacity:0.8 }
+    ).addTo(map));
+  }
+  tourResult.forEach((s, i) => {
+    const bgColor = s.feature ? '#ffcc00' : '#9c27b0';
+    tourMarkers.push(L.marker([s.entryPoint[1], s.entryPoint[0]], {
+      icon: L.divIcon({
+        className: '',
+        html: `<div style="width:28px;height:28px;border-radius:50%;background:${bgColor};color:#fff;font-family:'JetBrains Mono',monospace;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.4);border:2px solid #fff">${i+1}</div>`,
+        iconSize:[28,28], iconAnchor:[14,14],
+      }),
+    }).addTo(map));
+  });
+  if (goalPoint) {
+    tourMarkers.push(L.marker([goalPoint.latlng[0], goalPoint.latlng[1]], {
+      icon: L.divIcon({
+        className: '',
+        html: `<div style="width:28px;height:28px;border-radius:50%;background:#4285f4;color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.4);border:2px solid #fff">🏁</div>`,
+        iconSize:[28,28], iconAnchor:[14,14],
+      }),
+    }).addTo(map));
+  }
+  map.fitBounds(L.latLngBounds(pts.map(p=>[p[1],p[0]])), { padding:[50,50] });
+}
+
+function clearTourVisuals() {
+  tourMarkers.forEach(m=>map.removeLayer(m)); tourLines.forEach(l=>map.removeLayer(l));
+  tourMarkers=[]; tourLines=[];
+}
+
+function clearStaticSpotMarkers() {
+  staticSpotMarkers.forEach(m => map.removeLayer(m));
+  staticSpotMarkers = [];
+}
+
+// 計算前の経由地・ゴールをラベル付きマーカーで表示
+function renderStaticSpotMarkers() {
+  clearStaticSpotMarkers();
+  if (tourResult) return; // 計算後はtourMarkersに任せる
+
+  customSpots.forEach((s, i) => {
+    const label = s.name.replace(/^📌\s*/, '').replace(/^🗺\s*/, '');
+    staticSpotMarkers.push(L.marker([s.latlng[0], s.latlng[1]], {
+      icon: L.divIcon({
+        className: '',
+        html: `<div style="position:relative;display:flex;flex-direction:column;align-items:center">
+          <div style="background:#9c27b0;color:#fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,0.5);border:2px solid #fff;flex-shrink:0">📌</div>
+          <div style="background:rgba(26,39,51,0.92);color:#c77dff;font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;border:1px solid rgba(156,33,176,0.4);white-space:nowrap;margin-top:3px;max-width:120px;overflow:hidden;text-overflow:ellipsis">${label}</div>
+        </div>`,
+        iconSize: [26, 52], iconAnchor: [13, 13],
+      }),
+      zIndexOffset: 500,
+    }).addTo(map));
+  });
+
+  if (goalPoint) {
+    staticSpotMarkers.push(L.marker([goalPoint.latlng[0], goalPoint.latlng[1]], {
+      icon: L.divIcon({
+        className: '',
+        html: `<div style="position:relative;display:flex;flex-direction:column;align-items:center">
+          <div style="background:#4285f4;color:#fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,0.5);border:2px solid #fff;flex-shrink:0">🏁</div>
+          <div style="background:rgba(26,39,51,0.92);color:#7aadff;font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;border:1px solid rgba(66,133,244,0.4);white-space:nowrap;margin-top:3px;max-width:120px;overflow:hidden;text-overflow:ellipsis">${goalPoint.name}</div>
+        </div>`,
+        iconSize: [26, 52], iconAnchor: [13, 13],
+      }),
+      zIndexOffset: 600,
+    }).addTo(map));
+  }
+}
+
+function resetTourCalc() { tourResult=null; clearTourVisuals(); updateTourPanel(); }
+
+// ── 計算前リストの並べ替え ──
+function moveTourListItem(idx, dir) {
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= tourList.length) return;
+  [tourList[idx], tourList[newIdx]] = [tourList[newIdx], tourList[idx]];
+  updateTourPanel();
+}
+
+// ── 計算後ルートの並べ替え（入口点再計算付き） ──
+function moveTourResult(idx, dir) {
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= tourResult.length) return;
+  // swap
+  [tourResult[idx], tourResult[newIdx]] = [tourResult[newIdx], tourResult[idx]];
+  // 移動した前後の距離を再計算
+  recalcTourResultDistances();
+  renderTourOnMap(currentPos || [139.767, 35.681]);
+  updateTourPanel();
+}
+
+function recalcTourResultDistances() {
+  const pos = currentPos || [139.767, 35.681];
+  let prev = turf.point(pos);
+  for (let i = 0; i < tourResult.length; i++) {
+    const s = tourResult[i];
+    if (s.feature) {
+      // 市区町村: 前の点から境界最寄り点を再計算
+      const r = findNearestBoundaryPoint(prev, s.feature);
+      s.entryPoint = r.inside ? turf.centroid(s.feature).geometry.coordinates : r.point;
+      s.distance = r.distance;
+    } else {
+      // カスタムスポット: そのままの座標で距離だけ更新
+      s.distance = turf.distance(prev, turf.point(s.entryPoint));
+    }
+    prev = turf.point(s.entryPoint);
+  }
+}
+
+// ══════════════════════════════════════
+// NOMINATIM SPOT SEARCH
+// ══════════════════════════════════════
+let _lastSearchTime = 0;
+
+function clearSearchPreviewMarkers() {
+  searchPreviewMarkers.forEach(m => map.removeLayer(m));
+  searchPreviewMarkers = [];
+}
+
+function showSearchPreviewMarker(lat, lng, name) {
+  clearSearchPreviewMarkers();
+  const marker = L.marker([lat, lng], {
+    icon: L.divIcon({
+      className: '',
+      html: `<div style="position:relative;display:flex;flex-direction:column;align-items:center">
+        <div style="background:#ff8c00;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 10px rgba(255,140,0,0.6);border:2px solid #fff;flex-shrink:0">🔍</div>
+        <div style="background:rgba(26,39,51,0.95);color:#ffb347;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;border:1px solid rgba(255,140,0,0.5);white-space:nowrap;margin-top:3px;max-width:140px;overflow:hidden;text-overflow:ellipsis">${name}</div>
+      </div>`,
+      iconSize: [28, 56], iconAnchor: [14, 14],
+    }),
+    zIndexOffset: 900,
+  }).addTo(map);
+  searchPreviewMarkers.push(marker);
+  map.flyTo([lat, lng], Math.max(map.getZoom(), 13), { duration: 0.8 });
+}
+
+async function doSpotSearch() {
+  const input = document.getElementById('search-input');
+  const btn = document.getElementById('search-btn');
+  const resultsEl = document.getElementById('search-results');
+  const q = input.value.trim();
+  if (!q) return;
+
+  // Rate limit: 1秒インターバル
+  const now = Date.now();
+  if (now - _lastSearchTime < 1000) {
+    showToast('少し待ってから再試行してください');
+    return;
+  }
+  _lastSearchTime = now;
+
+  btn.disabled = true;
+  btn.textContent = '検索中...';
+  resultsEl.innerHTML = '<div class="search-empty">検索中...</div>';
+
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&countrycodes=jp&limit=5&accept-language=ja`;
+    const res = await fetch(url, {
+      headers: { 'Accept-Language': 'ja', 'User-Agent': 'CityVisitTracker/1.0' }
+    });
+    const data = await res.json();
+
+    if (!data || data.length === 0) {
+      resultsEl.innerHTML = '<div class="search-empty">見つかりませんでした</div>';
+      return;
+    }
+
+    resultsEl.innerHTML = data.map((item, i) => {
+      const name = item.display_name.split(',')[0];
+      const addr = item.display_name.split(',').slice(1, 3).join(',').trim();
+      const lat = parseFloat(item.lat).toFixed(6);
+      const lng = parseFloat(item.lon).toFixed(6);
+      const safeName = name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      return `<div class="search-result-item"
+                   onmouseenter="showSearchPreviewMarker(${lat},${lng},'${safeName}')"
+                   ontouchstart="showSearchPreviewMarker(${lat},${lng},'${safeName}')">
+        <div class="search-result-name">${name}</div>
+        <div class="search-result-addr">${addr}</div>
+        <div class="search-result-actions">
+          <button class="search-add-via" onclick="addSearchResultAsSpot(${lat},${lng},'${safeName}')">📌 経由地に追加</button>
+          <button class="search-add-goal" onclick="addSearchResultAsGoal(${lat},${lng},'${safeName}')">🏁 ゴールに設定</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    resultsEl.innerHTML = '<div class="search-empty">検索に失敗しました</div>';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '検索';
+  }
+}
+
+function addSearchResultAsSpot(lat, lng, name) {
+  const totalStops = tourList.length + customSpots.length + (goalPoint ? 1 : 0);
+  if (totalStops >= CONFIG.routing.maxWaypoints) {
+    showToast(`経由地の合計が上限${CONFIG.routing.maxWaypoints}件です`); return;
+  }
+  clearSearchPreviewMarkers();
+  customSpots.push({ latlng: [lat, lng], coords: [lng, lat], name: `📌 ${name}` });
+  tourResult = null; clearTourVisuals(); updateTourPanel();
+  showToast(`「${name}」を経由地に追加しました`);
+  document.getElementById('search-results').innerHTML = '';
+}
+
+function addSearchResultAsGoal(lat, lng, name) {
+  clearSearchPreviewMarkers();
+  goalPoint = { latlng: [lat, lng], coords: [lng, lat], name };
+  tourResult = null; clearTourVisuals(); updateTourPanel();
+  showToast(`「${name}」をゴールに設定しました`);
+  document.getElementById('search-results').innerHTML = '';
+}
+
+function openGoogleMapsTour() {
+  if (!tourResult) return;
+  const pos = currentPos || [139.767, 35.681];
+
+  // Build Google Maps dir URL: origin / waypoint1 / ... / destination
+  const stops = tourResult.map(s => `${s.entryPoint[1]},${s.entryPoint[0]}`);
+
+  let url;
+  if (goalPoint) {
+    // Origin → waypoints (tour stops) → Goal as destination
+    const origin = `${pos[1]},${pos[0]}`;
+    const dest = `${goalPoint.latlng[0]},${goalPoint.latlng[1]}`;
+    url = `https://www.google.com/maps/dir/${origin}/${stops.join('/')}/${dest}`;
+  } else {
+    // Origin → waypoints, last stop is destination
+    const origin = `${pos[1]},${pos[0]}`;
+    url = `https://www.google.com/maps/dir/${origin}/${stops.join('/')}`;
+  }
+  window.open(url, '_blank');
+}
+
+// ══════════════════════════════════════
+// CUSTOM SPOTS & GOAL
+// ══════════════════════════════════════
+function startSpotMode(mode) {
+  spotMode = mode;
+  const label = mode === 'goal' ? 'ゴール地点' : '経由地';
+  showToast(`地図をタップして${label}を設定してください`);
+}
+
+function onMapClickForSpot(e) {
+  if (!spotMode) return;
+  const { lat, lng } = e.latlng;
+  const name = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+
+  if (spotMode === 'goal') {
+    goalPoint = { latlng: [lat, lng], coords: [lng, lat], name };
+    showToast('ゴール地点を設定しました');
+  } else if (spotMode === 'custom') {
+    const totalStops = tourList.length + customSpots.length + (goalPoint ? 1 : 0);
+    if (totalStops >= CONFIG.routing.maxWaypoints) {
+      showToast(`経由地の合計が上限${CONFIG.routing.maxWaypoints}件です`);
+      spotMode = null;
+      return;
+    }
+    customSpots.push({ latlng: [lat, lng], coords: [lng, lat], name });
+    showToast('経由地を追加しました');
+  }
+
+  spotMode = null;
+  tourResult = null;
+  clearTourVisuals();
+  updateTourPanel();
+}
+
+function removeGoal() {
+  goalPoint = null;
+  tourResult = null; clearTourVisuals(); updateTourPanel();
+}
+
+// ポップアップから直接経由地追加（クリック座標）
+function addClickAsSpot(lat, lng) {
+  map.closePopup();
+  const totalStops = tourList.length + customSpots.length + (goalPoint ? 1 : 0);
+  if (totalStops >= CONFIG.routing.maxWaypoints) {
+    showToast(`経由地の合計が上限${CONFIG.routing.maxWaypoints}件です`); return;
+  }
+  const name = `📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+  customSpots.push({ latlng: [lat, lng], coords: [lng, lat], name });
+  tourResult = null; clearTourVisuals(); updateTourPanel();
+  showToast('経由地を追加しました');
+}
+
+// ポップアップから境界最寄り点を経由地追加
+function addBoundaryAsSpot(cityCode) {
+  map.closePopup();
+  const totalStops = tourList.length + customSpots.length + (goalPoint ? 1 : 0);
+  if (totalStops >= CONFIG.routing.maxWaypoints) {
+    showToast(`経由地の合計が上限${CONFIG.routing.maxWaypoints}件です`); return;
+  }
+  const feature = findFeatureByCode(cityCode);
+  if (!feature) return;
+  const pos = currentPos || [139.767, 35.681];
+  const result = findNearestBoundaryPoint(turf.point(pos), feature);
+  let coords;
+  if (result.inside) {
+    coords = turf.centroid(feature).geometry.coordinates;
+  } else {
+    coords = result.point;
+  }
+  const p = feature.properties;
+  const name = `🗺 ${p[CONFIG.props.cityName]}（境界）`;
+  customSpots.push({ latlng: [coords[1], coords[0]], coords, name });
+  tourResult = null; clearTourVisuals(); updateTourPanel();
+  showToast('境界経由地を追加しました');
+}
+
+// ポップアップからゴール設定（クリック座標）
+function addClickAsGoal(lat, lng) {
+  map.closePopup();
+  const name = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+  goalPoint = { latlng: [lat, lng], coords: [lng, lat], name };
+  tourResult = null; clearTourVisuals(); updateTourPanel();
+  showToast('ゴール地点を設定しました');
+}
+
+function removeCustomSpot(idx) {
+  customSpots.splice(idx, 1);
+  tourResult = null; clearTourVisuals(); updateTourPanel();
+}
+
+function getTotalStopCount() {
+  return tourList.length + customSpots.length + (goalPoint ? 1 : 0);
+}
+
+// ══════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════
+function findFeatureByCode(code) {
+  return visitedData.features.find(f => f.properties[CONFIG.props.cityCode] === code)
+    || unvisitedData.features.find(f => f.properties[CONFIG.props.cityCode] === code) || null;
+}
+
+function highlightFeature(feature) {
+  const code = feature.properties[CONFIG.props.cityCode];
+  const tl = feature.properties._visited ? visitedLayer : unvisitedLayer;
+  tl.eachLayer(l => { if (l.feature.properties[CONFIG.props.cityCode] === code) l.setStyle(CONFIG.style.highlight); });
+}
+
+function resetLayerStyle(feature) {
+  const code = feature.properties[CONFIG.props.cityCode];
+  const v = feature.properties._visited;
+  const tl = v ? visitedLayer : unvisitedLayer;
+  const st = v ? CONFIG.style.visited : CONFIG.style.unvisited;
+  tl.eachLayer(l => { if (l.feature.properties[CONFIG.props.cityCode] === code) l.setStyle(st); });
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>

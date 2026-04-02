@@ -873,14 +873,13 @@ function calculateTour() {
   const pos = getEffectiveStartPos();
   if (!startPoint && !currentPos) showToast('現在地未取得：東京駅を起点とします');
 
-  // Build mixed list: city features + custom spots (as pseudo-features)
+  // Build mixed list: city / boundary / spot
   const items = [
     ...tourList.map(t => ({ type: 'city', feature: t.feature })),
-    ...customSpots.map(s => ({
-      type: 'spot',
-      coords: s.coords,
-      name: s.name,
-    })),
+    ...customSpots.map(s => s.type === 'boundary'
+      ? { type: 'boundary', feature: s.feature, name: s.name }
+      : { type: 'spot', coords: s.coords, name: s.name }
+    ),
   ];
 
   const start = turf.point(pos);

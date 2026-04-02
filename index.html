@@ -884,13 +884,45 @@ function calculateTour() {
 
   const start = turf.point(pos);
   showToast('ルートを計算中...');
-  setTimeout(() => {
+  setTimeout(async () => {
     tourResult = items.length <= CONFIG.routing.bruteForceThreshold
       ? bruteForceTourMixed(start, items, goalPoint) : nnTourMixed(start, items, goalPoint);
+
+    // 各エントリー点を道路にスナップ
+    showToast('道路にスナップ中...');
+    await snapTourResultToRoads();
+
     renderTourOnMap(pos);
     updateTourPanel();
     showToast('巡回ルートを計算しました');
   }, 50);
+}
+
+// OSRM nearest API で1点を道路上にスナップ
+async function snapPointToRoad(lngLat) {
+  try {
+    const [lng, lat] = lngLat;
+    const res = await fetch(
+      `https://router.project-osrm.org/nearest/v1/driving/${lng},${lat}?number=1`,
+      { signal: AbortSignal.timeout(4000) }
+    );
+    const data = await res.json();
+    if (data.code === 'Ok' && data.waypoints && data.waypoints.length > 0) {
+      return data.waypoints[0].location; // [lng, lat]
+    }
+  } catch (e) {
+    // タイムアウト or エラーは元の点をそのまま使う
+  }
+  return lngLat;
+}
+
+// tourResult の全エントリー点を並列スナップ
+async function snapTourResultToRoads() {
+  if (!tourResult) return;
+  const snapped = await Promise.all(
+    tourResult.map(s => snapPointToRoad(s.entryPoint))
+  );
+  snapped.forEach((pt, i) => { tourResult[i].entryPoint = pt; });
 }
 
 function resolveItemEntryPoint(pos, item) {

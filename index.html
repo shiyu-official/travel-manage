@@ -82,68 +82,102 @@
   #btn-locate:active { transform: scale(0.92); }
   #btn-locate.active { border-color: var(--accent); background: rgba(0,229,160,0.15); }
 
-  /* ── Tour Panel ── */
+  /* ── Side Panel ── */
   #tour-panel {
-    position: fixed; bottom: 0; left: 0; right: 0;
+    position: fixed;
+    top: 52px; left: 0; bottom: 0;
+    width: 300px;
     z-index: 1001;
     background: var(--bg-panel);
-    border-top: 1px solid rgba(0,229,160,0.2);
-    border-radius: 16px 16px 0 0;
-    transform: translateY(100%);
-    transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
-    max-height: 55vh; overflow-y: auto;
-    box-shadow: 0 -8px 40px rgba(0,0,0,0.6);
+    border-right: 1px solid rgba(0,229,160,0.15);
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+    display: flex; flex-direction: column;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.4);
   }
-  #tour-panel.visible { transform: translateY(0); }
+  #tour-panel.visible { transform: translateX(0); }
+
+  /* スマホでは幅を画面の85%に制限 */
+  @media (max-width: 480px) {
+    #tour-panel { width: 85vw; }
+  }
+
+  #panel-body {
+    flex: 1; overflow-y: auto;
+    overscroll-behavior: contain;
+  }
 
   #tour-panel .panel-header {
-    position: sticky; top: 0;
     display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 16px 10px;
-    background: var(--bg-panel);
+    padding: 12px 14px 10px;
     border-bottom: 1px solid rgba(255,255,255,0.06);
+    flex-shrink: 0;
   }
-  #tour-panel .panel-header h3 { font-size: 14px; font-weight: 600; }
+  #tour-panel .panel-header h3 { font-size: 13px; font-weight: 600; }
   #tour-panel .panel-header .close-btn {
-    width: 28px; height: 28px; border-radius: 50%; border: none;
+    width: 26px; height: 26px; border-radius: 50%; border: none;
     background: rgba(255,255,255,0.08); color: var(--text-secondary);
-    font-size: 16px; cursor: pointer;
+    font-size: 15px; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
   }
 
-  .tour-list { padding: 4px 16px; }
+  /* パネル開閉ボタン（ヘッダー内） */
+  #btn-panel {
+    width: 32px; height: 32px; border-radius: 8px;
+    border: 1px solid rgba(0,229,160,0.3);
+    background: rgba(0,229,160,0.08); color: var(--accent);
+    font-size: 16px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s; flex-shrink: 0;
+  }
+  #btn-panel:active { background: rgba(0,229,160,0.2); }
+  #btn-panel.active { background: rgba(0,229,160,0.18); border-color: var(--accent); }
+
+  /* バッジ（リスト件数） */
+  #panel-badge {
+    display: none;
+    min-width: 18px; height: 18px; border-radius: 9px;
+    background: var(--accent); color: var(--bg-dark);
+    font-size: 10px; font-weight: 800;
+    align-items: center; justify-content: center;
+    position: absolute; top: -5px; right: -5px;
+    pointer-events: none;
+  }
+  #btn-panel-wrap { position: relative; flex-shrink: 0; }
+
+  .tour-list { padding: 4px 14px; }
 
   .tour-item {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
-    font-size: 13px;
+    padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 12px;
   }
   .tour-item .num {
-    width: 22px; height: 22px; border-radius: 50%;
+    width: 20px; height: 20px; border-radius: 50%;
     background: var(--accent); color: var(--bg-dark);
-    font-weight: 800; font-size: 11px;
+    font-weight: 800; font-size: 10px;
     display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0; margin-right: 10px;
+    flex-shrink: 0; margin-right: 8px;
   }
-  .tour-item .name { flex: 1; }
+  .tour-item .name { flex: 1; font-size: 12px; line-height: 1.3; }
   .tour-item .dist {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11px; color: var(--text-muted); margin-right: 8px;
+    font-size: 10px; color: var(--text-muted); margin-right: 6px;
   }
   .tour-item .remove-btn {
-    width: 24px; height: 24px; border-radius: 50%; border: none;
+    width: 22px; height: 22px; border-radius: 50%; border: none;
     background: rgba(255,92,106,0.12); color: var(--danger);
-    font-size: 14px; cursor: pointer;
+    font-size: 13px; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
   }
 
   .tour-actions {
-    padding: 12px 16px 20px; display: flex; gap: 8px;
+    padding: 10px 14px 14px; display: flex; gap: 6px; flex-shrink: 0;
   }
   .tour-actions button {
-    flex: 1; padding: 12px; border-radius: 10px; border: none;
+    flex: 1; padding: 10px; border-radius: 10px; border: none;
     font-family: 'M PLUS 1', sans-serif;
-    font-weight: 600; font-size: 13px; cursor: pointer;
+    font-weight: 600; font-size: 12px; cursor: pointer;
     transition: all 0.15s;
   }
   .btn-primary { background: var(--accent); color: var(--bg-dark); }
@@ -152,9 +186,9 @@
   .btn-gmaps { background: linear-gradient(135deg, #4285f4, #34a853); color: #fff; }
 
   .tour-total {
-    padding: 0 16px 8px;
+    padding: 0 14px 6px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 12px; color: var(--text-muted); text-align: right;
+    font-size: 11px; color: var(--text-muted); text-align: right;
   }
 
   /* ── Popup ── */
@@ -223,92 +257,76 @@
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-  /* ── Custom spot / Goal inputs ── */
+  /* ── Custom spot / Goal ── */
   .tour-section {
-    padding: 8px 16px;
+    padding: 8px 14px;
     border-bottom: 1px solid rgba(255,255,255,0.06);
   }
   .tour-section-label {
-    font-size: 11px; font-weight: 600;
+    font-size: 10px; font-weight: 600;
     color: var(--text-muted); letter-spacing: 0.5px;
-    margin-bottom: 6px;
+    margin-bottom: 5px;
   }
   .tour-spot-row {
-    display: flex; align-items: center; gap: 8px;
-    padding: 4px 0;
+    display: flex; align-items: center; gap: 7px; padding: 3px 0;
   }
   .tour-spot-row .spot-icon {
-    width: 22px; height: 22px; border-radius: 50%;
-    font-size: 11px; font-weight: 800;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
+    width: 20px; height: 20px; border-radius: 50%;
+    font-size: 10px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
   .spot-icon.goal { background: #4285f4; color: #fff; }
   .spot-icon.custom { background: #9c27b0; color: #fff; }
-  .tour-spot-row .spot-name {
-    flex: 1; font-size: 13px; color: var(--text-primary);
-  }
+  .tour-spot-row .spot-name { flex: 1; font-size: 12px; color: var(--text-primary); }
   .tour-spot-row .remove-btn {
-    width: 24px; height: 24px; border-radius: 50%; border: none;
+    width: 22px; height: 22px; border-radius: 50%; border: none;
     background: rgba(255,92,106,0.12); color: var(--danger);
-    font-size: 14px; cursor: pointer;
+    font-size: 13px; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
   }
   .add-spot-btn {
-    width: 100%; padding: 8px; margin-top: 4px;
-    border-radius: 8px; border: 1px dashed rgba(255,255,255,0.15);
+    width: 100%; padding: 7px; margin-top: 4px;
+    border-radius: 7px; border: 1px dashed rgba(255,255,255,0.15);
     background: transparent; color: var(--text-muted);
-    font-family: 'M PLUS 1', sans-serif; font-size: 12px;
+    font-family: 'M PLUS 1', sans-serif; font-size: 11px;
     cursor: pointer; transition: all 0.15s;
   }
   .add-spot-btn:active { background: rgba(255,255,255,0.05); }
-
   .spot-note {
-    font-size: 10px; color: var(--text-muted);
-    padding: 4px 0 0; font-style: italic;
+    font-size: 10px; color: var(--text-muted); padding: 3px 0 0; font-style: italic;
   }
 
-  /* ── Popup 3-action buttons ── */
+  /* ── Popup action buttons ── */
   .popup-action-group {
     display: flex; flex-direction: column; gap: 5px; margin-top: 8px;
   }
-  .popup-action-row {
-    display: flex; gap: 5px;
-  }
+  .popup-action-row { display: flex; gap: 5px; }
   .popup-action-row .popup-tour-btn,
-  .popup-action-row .popup-nav-btn {
-    flex: 1;
-  }
+  .popup-action-row .popup-nav-btn { flex: 1; }
   .popup-spot-btn {
     width: 100%; padding: 7px 10px; border-radius: 8px; border: none;
-    font-family: 'M PLUS 1', sans-serif;
-    font-weight: 600; font-size: 11px; cursor: pointer;
+    font-family: 'M PLUS 1', sans-serif; font-weight: 600; font-size: 11px; cursor: pointer;
     background: rgba(156,33,176,0.15); color: #c77dff;
     border: 1px solid rgba(156,33,176,0.3) !important;
   }
   .popup-goal-btn {
     width: 100%; padding: 7px 10px; border-radius: 8px; border: none;
-    font-family: 'M PLUS 1', sans-serif;
-    font-weight: 600; font-size: 11px; cursor: pointer;
+    font-family: 'M PLUS 1', sans-serif; font-weight: 600; font-size: 11px; cursor: pointer;
     background: rgba(66,133,244,0.15); color: #7aadff;
     border: 1px solid rgba(66,133,244,0.3) !important;
   }
 
   /* ── Reorder buttons ── */
-  .reorder-btns {
-    display: flex; flex-direction: column; gap: 2px; margin-right: 4px;
-  }
+  .reorder-btns { display: flex; flex-direction: column; gap: 2px; margin-right: 4px; }
   .reorder-btn {
-    width: 20px; height: 18px; border-radius: 4px; border: none;
+    width: 18px; height: 16px; border-radius: 3px; border: none;
     background: rgba(255,255,255,0.07); color: var(--text-muted);
-    font-size: 10px; cursor: pointer; line-height: 1;
+    font-size: 9px; cursor: pointer; line-height: 1;
     display: flex; align-items: center; justify-content: center;
     transition: background 0.15s;
   }
   .reorder-btn:hover { background: rgba(255,255,255,0.15); color: var(--text-primary); }
   .reorder-btn:disabled { opacity: 0.2; cursor: default; }
-
-  /* ── Header search bar ── */
   #header-search-wrap {
     flex: 1; display: flex; align-items: center;
     margin: 0 10px; max-width: 320px; position: relative;
@@ -351,74 +369,6 @@
   .hdr-add-via { background: rgba(156,33,176,0.15); color: #c77dff; border: 1px solid rgba(156,33,176,0.25) !important; }
   .hdr-add-goal { background: rgba(66,133,244,0.15); color: #7aadff; border: 1px solid rgba(66,133,244,0.25) !important; }
   .hdr-search-empty { font-size: 11px; color: var(--text-muted); text-align: center; padding: 10px; font-style: italic; }
-
-  /* ── Spot search (Nominatim) ── */
-  .search-section {
-    padding: 10px 16px 6px;
-    border-top: 1px solid rgba(255,255,255,0.06);
-  }
-  .search-section-label {
-    font-size: 11px; font-weight: 600; color: var(--text-muted);
-    letter-spacing: 0.5px; margin-bottom: 6px;
-  }
-  .search-row {
-    display: flex; gap: 6px; align-items: stretch;
-  }
-  .search-input {
-    flex: 1; padding: 8px 10px; border-radius: 8px;
-    border: 1px solid rgba(255,255,255,0.12);
-    background: rgba(255,255,255,0.06); color: var(--text-primary);
-    font-family: 'M PLUS 1', sans-serif; font-size: 12px;
-    outline: none; transition: border-color 0.15s;
-  }
-  .search-input:focus { border-color: rgba(0,229,160,0.4); }
-  .search-input::placeholder { color: var(--text-muted); }
-  .search-btn {
-    padding: 8px 12px; border-radius: 8px; border: none;
-    background: rgba(0,229,160,0.15); color: var(--accent);
-    font-family: 'M PLUS 1', sans-serif; font-weight: 600; font-size: 12px;
-    cursor: pointer; white-space: nowrap; transition: all 0.15s;
-    border: 1px solid rgba(0,229,160,0.25) !important;
-  }
-  .search-btn:active { background: rgba(0,229,160,0.25); }
-  .search-btn:disabled { opacity: 0.4; cursor: default; }
-  .search-results {
-    margin-top: 6px; display: flex; flex-direction: column; gap: 4px;
-  }
-  .search-result-item {
-    padding: 8px 10px; border-radius: 8px;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-    cursor: pointer; transition: background 0.15s;
-  }
-  .search-result-item:hover { background: rgba(255,255,255,0.08); }
-  .search-result-name {
-    font-size: 12px; font-weight: 600; color: var(--text-primary);
-    margin-bottom: 2px;
-  }
-  .search-result-addr {
-    font-size: 10px; color: var(--text-muted); margin-bottom: 4px;
-  }
-  .search-result-actions {
-    display: flex; gap: 4px;
-  }
-  .search-result-actions button {
-    flex: 1; padding: 4px 6px; border-radius: 6px; border: none;
-    font-family: 'M PLUS 1', sans-serif; font-weight: 600; font-size: 10px;
-    cursor: pointer;
-  }
-  .search-add-via {
-    background: rgba(156,33,176,0.15); color: #c77dff;
-    border: 1px solid rgba(156,33,176,0.25) !important;
-  }
-  .search-add-goal {
-    background: rgba(66,133,244,0.15); color: #7aadff;
-    border: 1px solid rgba(66,133,244,0.25) !important;
-  }
-  .search-empty {
-    font-size: 11px; color: var(--text-muted);
-    text-align: center; padding: 8px 0; font-style: italic;
-  }
 </style>
 </head>
 <body>
@@ -444,7 +394,13 @@
     <button id="header-search-btn" onclick="doHeaderSearch()">🔍</button>
     <div id="header-search-dropdown"></div>
   </div>
-  <div id="stats-badge">-- / -- (--.--%)</div>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <div id="btn-panel-wrap">
+      <button id="btn-panel" onclick="toggleTourPanel()" title="巡回リスト">☰</button>
+      <span id="panel-badge"></span>
+    </div>
+    <div id="stats-badge">未訪問 --件</div>
+  </div>
 </header>
 
 <div id="map"></div>
@@ -456,60 +412,50 @@
     <button class="close-btn" onclick="closeTourPanel()">×</button>
   </div>
 
-  <!-- Start point -->
-  <div class="tour-section" id="start-section">
-    <div class="tour-section-label">🚩 スタート地点</div>
-    <div id="start-display" style="display:flex;align-items:center;gap:8px;padding:4px 0;">
-      <span style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--bg-dark);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">S</span>
-      <span id="start-name" style="flex:1;font-size:12px;color:var(--text-muted);">現在地（未設定時は東京駅）</span>
+  <div id="panel-body">
+    <!-- Start point -->
+    <div class="tour-section" id="start-section">
+      <div class="tour-section-label">🚩 スタート地点</div>
+      <div id="start-display" style="display:flex;align-items:center;gap:7px;padding:3px 0;">
+        <span style="width:20px;height:20px;border-radius:50%;background:var(--accent);color:var(--bg-dark);font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">S</span>
+        <span id="start-name" style="flex:1;font-size:11px;color:var(--text-muted);">現在地（未設定時は東京駅）</span>
+      </div>
+      <div style="display:flex;gap:5px;margin-top:5px;">
+        <button class="add-spot-btn" style="margin-top:0;font-size:10px;" onclick="setStartFromGPS()">📡 現在地</button>
+        <button class="add-spot-btn" style="margin-top:0;font-size:10px;" onclick="startSpotMode('startpoint')">🗺 地図でタップ</button>
+      </div>
     </div>
-    <div style="display:flex;gap:6px;margin-top:6px;">
-      <button class="add-spot-btn" style="margin-top:0;" onclick="setStartFromGPS()">📡 現在地を使用</button>
-      <button class="add-spot-btn" style="margin-top:0;" onclick="startSpotMode('startpoint')">🗺 地図でタップ</button>
+
+    <!-- Custom spots (mid-route) -->
+    <div class="tour-section" id="custom-spots-section" style="display:none;">
+      <div class="tour-section-label">📌 経由スポット</div>
+      <div id="custom-spots-list"></div>
     </div>
-  </div>
 
-  <!-- Custom spots (mid-route) -->
-  <div class="tour-section" id="custom-spots-section" style="display:none;">
-    <div class="tour-section-label">📌 経由スポット</div>
-    <div id="custom-spots-list"></div>
-  </div>
+    <!-- City tour list -->
+    <div class="tour-list" id="tour-list"></div>
+    <div class="tour-total" id="tour-total"></div>
 
-  <!-- City tour list -->
-  <div class="tour-list" id="tour-list"></div>
-  <div class="tour-total" id="tour-total"></div>
+    <!-- Goal -->
+    <div class="tour-section" id="goal-section">
+      <div class="tour-section-label">🏁 ゴール地点</div>
+      <div id="goal-display"></div>
+      <p class="spot-note" id="goal-hint">未設定なら最後の市区町村が終点</p>
+    </div>
 
-  <!-- Goal -->
-  <div class="tour-section" id="goal-section">
-    <div class="tour-section-label">🏁 ゴール地点</div>
-    <div id="goal-display"></div>
-    <p class="spot-note" id="goal-hint">地図を長押しで設定、未設定なら最後の市区町村が終点</p>
-  </div>
-
-  <div class="tour-section">
-    <button class="add-spot-btn" onclick="startSpotMode('custom')">＋ 任意の経由地を地図で追加</button>
-    <button class="add-spot-btn" style="margin-top:4px" onclick="startSpotMode('goal')">🏁 ゴール地点を地図で設定</button>
-  </div>
+    <div class="tour-section">
+      <button class="add-spot-btn" onclick="startSpotMode('custom')">＋ 経由地を地図で追加</button>
+      <button class="add-spot-btn" style="margin-top:4px" onclick="startSpotMode('goal')">🏁 ゴールを地図で設定</button>
+    </div>
+  </div><!-- /panel-body -->
 
   <div class="tour-actions" id="tour-actions">
-    <button class="btn-primary" onclick="calculateTour()">巡回ルート計算</button>
+    <button class="btn-primary" onclick="calculateTour()">ルート計算</button>
     <button class="btn-secondary" onclick="clearTour()">クリア</button>
   </div>
   <div class="tour-actions" id="tour-gmaps-actions" style="display:none;">
-    <button class="btn-gmaps" onclick="openGoogleMapsTour()">🗺 Google Maps で開く</button>
+    <button class="btn-gmaps" onclick="openGoogleMapsTour()">🗺 Google Maps</button>
     <button class="btn-secondary" onclick="resetTourCalc()">🔄 再計算</button>
-  </div>
-
-  <!-- Nominatim spot search -->
-  <div class="search-section">
-    <div class="search-section-label">🔍 スポット検索</div>
-    <div class="search-row">
-      <input class="search-input" id="search-input" type="text"
-             placeholder="例: 東京駅、〇〇IC、コンビニ 新橋"
-             onkeydown="if(event.key==='Enter')doSpotSearch()">
-      <button class="search-btn" id="search-btn" onclick="doSpotSearch()">検索</button>
-    </div>
-    <div class="search-results" id="search-results"></div>
   </div>
 </div>
 
@@ -940,42 +886,47 @@ function calculateTour() {
   showToast('ルートを計算中...');
   setTimeout(() => {
     tourResult = items.length <= CONFIG.routing.bruteForceThreshold
-      ? bruteForceTourMixed(start, items) : nnTourMixed(start, items);
+      ? bruteForceTourMixed(start, items, goalPoint) : nnTourMixed(start, items, goalPoint);
     renderTourOnMap(pos);
     updateTourPanel();
     showToast('巡回ルートを計算しました');
   }, 50);
 }
 
-function nnTourMixed(start, items) {
+function nnTourMixed(start, items, goal) {
   const rem = [...items], ordered = [];
   let pos = start;
   while (rem.length > 0) {
     let bi = -1, bd = Infinity, bp = null, bItem = null;
     for (let i = 0; i < rem.length; i++) {
       const item = rem[i];
+      let d, p;
       if (item.type === 'city') {
         const r = findNearestBoundaryPoint(pos, item.feature);
-        const d = r.distance;
-        const p = r.inside ? turf.centroid(item.feature).geometry.coordinates : r.point;
-        if (d < bd) { bd=d; bi=i; bp=p; bItem=item; }
+        d = r.distance;
+        p = r.inside ? turf.centroid(item.feature).geometry.coordinates : r.point;
       } else {
-        const d = turf.distance(pos, turf.point(item.coords));
-        if (d < bd) { bd=d; bi=i; bp=item.coords; bItem=item; }
+        d = turf.distance(pos, turf.point(item.coords));
+        p = item.coords;
       }
+      // ゴールがある場合：残り1つなら「現在地→候補→ゴール」の合計で比較
+      if (goal && rem.length === 1) {
+        d += turf.distance(turf.point(p), turf.point(goal.coords));
+      }
+      if (d < bd) { bd=d; bi=i; bp=p; bItem=item; }
     }
     ordered.push({
       feature: bItem.type === 'city' ? bItem.feature : null,
       name: bItem.type === 'spot' ? bItem.name : null,
       entryPoint: bp,
-      distance: bd,
+      distance: turf.distance(pos, turf.point(bp)),
     });
     pos = turf.point(bp); rem.splice(bi, 1);
   }
   return ordered;
 }
 
-function bruteForceTourMixed(start, items) {
+function bruteForceTourMixed(start, items, goal) {
   let best = null, bestD = Infinity;
   for (const perm of permutations(items)) {
     let d = 0, pos = start; const route = [];
@@ -996,6 +947,10 @@ function bruteForceTourMixed(start, items) {
         entryPoint: ep, distance: dist,
       });
       pos = turf.point(ep);
+    }
+    // ゴールがある場合はゴールまでの距離も合計に含めて比較
+    if (goal) {
+      d += turf.distance(pos, turf.point(goal.coords));
     }
     if (d < bestD) { bestD=d; best=route; }
   }

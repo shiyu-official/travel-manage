@@ -309,6 +309,113 @@
   .reorder-btn:hover { background: rgba(255,255,255,0.15); color: var(--text-primary); }
   .reorder-btn:disabled { opacity: 0.2; cursor: default; }
 
+  /* ── Header search bar ── */
+  #header-search-wrap {
+    flex: 1; display: flex; align-items: center;
+    margin: 0 10px; max-width: 320px;
+    position: relative;
+  }
+  #header-search-input {
+    width: 100%; padding: 7px 36px 7px 12px; border-radius: 20px;
+    border: 1px solid rgba(0,229,160,0.3);
+    background: rgba(255,255,255,0.07); color: var(--text-primary);
+    font-family: 'M PLUS 1', sans-serif; font-size: 12px;
+    outline: none; transition: border-color 0.2s, background 0.2s;
+  }
+  #header-search-input:focus {
+    border-color: rgba(0,229,160,0.6);
+    background: rgba(255,255,255,0.10);
+  }
+  #header-search-input::placeholder { color: var(--text-muted); }
+  #header-search-btn {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; color: var(--accent);
+    font-size: 15px; cursor: pointer; padding: 4px; line-height: 1;
+  }
+  #header-search-dropdown {
+    position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+    background: var(--bg-panel);
+    border: 1px solid rgba(0,229,160,0.2);
+    border-radius: 12px; z-index: 2000;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    overflow: hidden; display: none;
+  }
+  #header-search-dropdown.open { display: block; }
+  .hdr-search-result {
+    padding: 9px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    cursor: pointer; transition: background 0.12s;
+  }
+  .hdr-search-result:last-child { border-bottom: none; }
+  .hdr-search-result:hover { background: rgba(255,255,255,0.06); }
+  .hdr-result-name { font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px; }
+  .hdr-result-addr { font-size: 10px; color: var(--text-muted); margin-bottom: 5px; }
+  .hdr-result-actions { display: flex; gap: 4px; }
+  .hdr-result-actions button {
+    flex: 1; padding: 4px 6px; border-radius: 6px; border: none;
+    font-family: 'M PLUS 1', sans-serif; font-weight: 600; font-size: 10px;
+    cursor: pointer;
+  }
+  .hdr-add-start {
+    background: rgba(0,229,160,0.15); color: var(--accent);
+    border: 1px solid rgba(0,229,160,0.3) !important;
+  }
+  .hdr-add-via {
+    background: rgba(156,33,176,0.15); color: #c77dff;
+    border: 1px solid rgba(156,33,176,0.25) !important;
+  }
+  .hdr-add-goal {
+    background: rgba(66,133,244,0.15); color: #7aadff;
+    border: 1px solid rgba(66,133,244,0.25) !important;
+  }
+  .hdr-search-empty {
+    font-size: 11px; color: var(--text-muted);
+    text-align: center; padding: 10px; font-style: italic;
+  }
+
+  /* ── Start point section in panel ── */
+  #start-section {
+    padding: 8px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .start-section-label {
+    font-size: 11px; font-weight: 600; color: var(--text-muted);
+    letter-spacing: 0.5px; margin-bottom: 6px;
+  }
+  #start-display {
+    display: flex; align-items: center; gap: 8px; padding: 4px 0;
+  }
+  .start-icon {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--accent); color: var(--bg-dark);
+    font-size: 11px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  #start-name {
+    flex: 1; font-size: 12px; color: var(--text-primary);
+  }
+  #start-clear-btn {
+    width: 24px; height: 24px; border-radius: 50%; border: none;
+    background: rgba(255,92,106,0.12); color: var(--danger);
+    font-size: 14px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .start-btns { display: flex; gap: 6px; margin-top: 6px; }
+  .start-btns button {
+    flex: 1; padding: 7px; border-radius: 8px; border: none;
+    font-family: 'M PLUS 1', sans-serif; font-weight: 600; font-size: 11px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .btn-start-gps {
+    background: rgba(0,229,160,0.12); color: var(--accent);
+    border: 1px solid rgba(0,229,160,0.25) !important;
+  }
+  .btn-start-map {
+    background: rgba(255,200,0,0.12); color: #ffd700;
+    border: 1px solid rgba(255,200,0,0.25) !important;
+  }
+
   /* ── Spot search (Nominatim) ── */
   .search-section {
     padding: 10px 16px 6px;
@@ -393,6 +500,16 @@
     </svg>
     訪問記録
   </div>
+
+  <!-- ヘッダー検索バー -->
+  <div id="header-search-wrap">
+    <input id="header-search-input" type="text" placeholder="🔍 スポットを検索..."
+           onkeydown="if(event.key==='Enter')doHeaderSearch()"
+           oninput="if(!this.value.trim())closeHeaderDropdown()">
+    <button id="header-search-btn" onclick="doHeaderSearch()">🔍</button>
+    <div id="header-search-dropdown"></div>
+  </div>
+
   <div id="stats-badge">-- / -- (--.--%)</div>
 </header>
 
@@ -403,6 +520,19 @@
   <div class="panel-header">
     <h3 id="tour-title">巡回リスト（0件）</h3>
     <button class="close-btn" onclick="closeTourPanel()">×</button>
+  </div>
+
+  <!-- Start point -->
+  <div id="start-section">
+    <div class="start-section-label">🚩 スタート地点</div>
+    <div id="start-display">
+      <span class="start-icon">S</span>
+      <span id="start-name" style="color:var(--text-muted);font-size:12px;">現在地（未設定時は東京駅）</span>
+    </div>
+    <div class="start-btns">
+      <button class="btn-start-gps" onclick="setStartFromGPS()">📡 現在地を使用</button>
+      <button class="btn-start-map" onclick="startSpotMode('startpoint')">🗺 地図でタップ</button>
+    </div>
   </div>
 
   <!-- Custom spots (mid-route) -->
@@ -436,9 +566,9 @@
     <button class="btn-secondary" onclick="resetTourCalc()">🔄 再計算</button>
   </div>
 
-  <!-- Nominatim spot search -->
+  <!-- Nominatim spot search (パネル内) -->
   <div class="search-section">
-    <div class="search-section-label">🔍 スポット検索</div>
+    <div class="search-section-label">🔍 スポット検索（パネル内）</div>
     <div class="search-row">
       <input class="search-input" id="search-input" type="text"
              placeholder="例: 東京駅、〇〇IC、コンビニ 新橋"
@@ -484,10 +614,12 @@ let map, visitedLayer, unvisitedLayer, visitedData, unvisitedData;
 let currentPos = null, currentMarker = null, accuracyCircle = null, watchId = null;
 let tourList = [], tourResult = null, tourMarkers = [], tourLines = [];
 let goalPoint = null;           // { latlng: [lat,lng], name: string }
+let startPoint = null;          // { latlng: [lat,lng], coords: [lng,lat], name: string } | null = 現在地
 let customSpots = [];           // [{ latlng: [lat,lng], name: string, coords: [lng,lat] }]
-let spotMode = null;            // 'goal' | 'custom' | null
+let spotMode = null;            // 'goal' | 'custom' | 'startpoint' | null
 let searchPreviewMarkers = [];  // Nominatim候補の一時プレビューマーカー
 let staticSpotMarkers = [];     // 計算前の経由地・ゴールの常時マーカー
+let startMarker = null;         // スタート地点の常時マーカー
 
 // ══════════════════════════════════════
 // INIT
@@ -517,6 +649,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Map click for adding custom spots / goal
   map.on('click', onMapClickForSpot);
+
+  // ヘッダー検索ドロップダウンを外クリックで閉じる
+  document.addEventListener('click', (e) => {
+    const wrap = document.getElementById('header-search-wrap');
+    if (wrap && !wrap.contains(e.target)) closeHeaderDropdown();
+  });
 });
 
 // ══════════════════════════════════════
@@ -569,8 +707,12 @@ function bindPopup(feature, layer, isVisited) {
             <button class="popup-spot-btn"
                     onclick="addBoundaryAsSpot('${code}')">🗺 この地域を経由</button>
           </div>
-          <button class="popup-goal-btn"
-                  onclick="addClickAsGoal(${clickLat},${clickLng})">🏁 この場所をゴールに</button>
+          <div class="popup-action-row">
+            <button class="popup-goal-btn"
+                    onclick="addClickAsGoal(${clickLat},${clickLng})">🏁 この場所をゴールに</button>
+            <button style="flex:1;padding:7px 10px;border-radius:8px;border:none;font-family:'M PLUS 1',sans-serif;font-weight:600;font-size:11px;cursor:pointer;background:rgba(0,229,160,0.15);color:var(--accent);border:1px solid rgba(0,229,160,0.3)!important;"
+                    onclick="setStartFromSearch(${clickLat},${clickLng},'この場所');map.closePopup()">🚩 スタートに</button>
+          </div>
         </div>`)
       .openOn(map);
   });
@@ -649,8 +791,8 @@ function navigateTo(cityCode) {
   map.closePopup();
   const feature = findFeatureByCode(cityCode);
   if (!feature) return;
-  const pos = currentPos || [139.767, 35.681];
-  if (!currentPos) showToast('現在地未取得：東京駅を起点とします');
+  const pos = getEffectiveStartPos();
+  if (!startPoint && !currentPos) showToast('現在地未取得：東京駅を起点とします');
 
   const result = findNearestBoundaryPoint(turf.point(pos), feature);
   if (result.inside) { showToast('現在この市区町村内にいます！'); return; }
@@ -737,7 +879,8 @@ function toggleTourItem(cityCode) {
 function clearTour() {
   tourList.forEach(t => resetLayerStyle(t.feature));
   tourList = []; tourResult = null;
-  goalPoint = null; customSpots = []; spotMode = null;
+  goalPoint = null; startPoint = null; customSpots = []; spotMode = null;
+  if (startMarker) { map.removeLayer(startMarker); startMarker = null; }
   clearTourVisuals(); clearStaticSpotMarkers(); updateTourPanel();
 }
 
@@ -759,8 +902,29 @@ function updateTourPanel() {
   const customSection = document.getElementById('custom-spots-section');
   const customList = document.getElementById('custom-spots-list');
 
+  // Update start point display
+  const startNameEl = document.getElementById('start-name');
+  const startClearBtn = document.getElementById('start-clear-btn');
+  if (startPoint) {
+    startNameEl.textContent = startPoint.name;
+    startNameEl.style.color = 'var(--accent)';
+    if (!startClearBtn) {
+      const btn = document.createElement('button');
+      btn.id = 'start-clear-btn';
+      btn.className = 'remove-btn';
+      btn.textContent = '×';
+      btn.onclick = clearStartPoint;
+      document.getElementById('start-display').appendChild(btn);
+    }
+  } else {
+    startNameEl.textContent = '現在地（未設定時は東京駅）';
+    startNameEl.style.color = 'var(--text-muted)';
+    const cb = document.getElementById('start-clear-btn');
+    if (cb) cb.remove();
+  }
+
   const total = getTotalStopCount();
-  if (tourList.length === 0 && customSpots.length === 0 && !goalPoint) {
+  if (tourList.length === 0 && customSpots.length === 0 && !goalPoint && !startPoint) {
     panel.classList.remove('visible'); return;
   }
   panel.classList.add('visible');
@@ -845,8 +1009,8 @@ function updateTourPanel() {
 
 function calculateTour() {
   if (tourList.length === 0 && customSpots.length === 0) return;
-  const pos = currentPos || [139.767, 35.681];
-  if (!currentPos) showToast('現在地未取得：東京駅を起点とします');
+  const pos = getEffectiveStartPos();
+  if (!startPoint && !currentPos) showToast('現在地未取得：東京駅を起点とします');
 
   // Build mixed list: city features + custom spots (as pseudo-features)
   const items = [
@@ -936,6 +1100,7 @@ function permutations(a) {
 
 function renderTourOnMap(startPos) {
   clearTourVisuals();
+  if (startMarker) { map.removeLayer(startMarker); startMarker = null; }
   if (!tourResult) return;
   const pts = [startPos, ...tourResult.map(s => s.entryPoint)];
   if (goalPoint) pts.push(goalPoint.coords);
@@ -1013,7 +1178,7 @@ function renderStaticSpotMarkers() {
   }
 }
 
-function resetTourCalc() { tourResult=null; clearTourVisuals(); updateTourPanel(); }
+function resetTourCalc() { tourResult=null; clearTourVisuals(); updateTourPanel(); renderStartMarker(); }
 
 // ── 計算前リストの並べ替え ──
 function moveTourListItem(idx, dir) {
@@ -1031,12 +1196,12 @@ function moveTourResult(idx, dir) {
   [tourResult[idx], tourResult[newIdx]] = [tourResult[newIdx], tourResult[idx]];
   // 移動した前後の距離を再計算
   recalcTourResultDistances();
-  renderTourOnMap(currentPos || [139.767, 35.681]);
+  renderTourOnMap(getEffectiveStartPos());
   updateTourPanel();
 }
 
 function recalcTourResultDistances() {
-  const pos = currentPos || [139.767, 35.681];
+  const pos = getEffectiveStartPos();
   let prev = turf.point(pos);
   for (let i = 0; i < tourResult.length; i++) {
     const s = tourResult[i];
@@ -1123,6 +1288,7 @@ async function doSpotSearch() {
         <div class="search-result-name">${name}</div>
         <div class="search-result-addr">${addr}</div>
         <div class="search-result-actions">
+          <button class="hdr-add-start" onclick="setStartFromSearch(${lat},${lng},'${safeName}')">🚩 スタート</button>
           <button class="search-add-via" onclick="addSearchResultAsSpot(${lat},${lng},'${safeName}')">📌 経由地に追加</button>
           <button class="search-add-goal" onclick="addSearchResultAsGoal(${lat},${lng},'${safeName}')">🏁 ゴールに設定</button>
         </div>
@@ -1158,19 +1324,17 @@ function addSearchResultAsGoal(lat, lng, name) {
 
 function openGoogleMapsTour() {
   if (!tourResult) return;
-  const pos = currentPos || [139.767, 35.681];
+  const pos = getEffectiveStartPos();
 
   // Build Google Maps dir URL: origin / waypoint1 / ... / destination
   const stops = tourResult.map(s => `${s.entryPoint[1]},${s.entryPoint[0]}`);
 
   let url;
   if (goalPoint) {
-    // Origin → waypoints (tour stops) → Goal as destination
     const origin = `${pos[1]},${pos[0]}`;
     const dest = `${goalPoint.latlng[0]},${goalPoint.latlng[1]}`;
     url = `https://www.google.com/maps/dir/${origin}/${stops.join('/')}/${dest}`;
   } else {
-    // Origin → waypoints, last stop is destination
     const origin = `${pos[1]},${pos[0]}`;
     url = `https://www.google.com/maps/dir/${origin}/${stops.join('/')}`;
   }
@@ -1182,8 +1346,8 @@ function openGoogleMapsTour() {
 // ══════════════════════════════════════
 function startSpotMode(mode) {
   spotMode = mode;
-  const label = mode === 'goal' ? 'ゴール地点' : '経由地';
-  showToast(`地図をタップして${label}を設定してください`);
+  const labels = { goal: 'ゴール地点', custom: '経由地', startpoint: 'スタート地点' };
+  showToast(`地図をタップして${labels[mode] || '地点'}を設定してください`);
 }
 
 function onMapClickForSpot(e) {
@@ -1191,7 +1355,11 @@ function onMapClickForSpot(e) {
   const { lat, lng } = e.latlng;
   const name = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
 
-  if (spotMode === 'goal') {
+  if (spotMode === 'startpoint') {
+    startPoint = { latlng: [lat, lng], coords: [lng, lat], name };
+    showToast('スタート地点を設定しました');
+    tourResult = null; clearTourVisuals(); updateTourPanel(); renderStartMarker();
+  } else if (spotMode === 'goal') {
     goalPoint = { latlng: [lat, lng], coords: [lng, lat], name };
     showToast('ゴール地点を設定しました');
   } else if (spotMode === 'custom') {
@@ -1216,6 +1384,107 @@ function removeGoal() {
   tourResult = null; clearTourVisuals(); updateTourPanel();
 }
 
+// ── スタート地点 ──
+function setStartFromGPS() {
+  if (!currentPos) {
+    showToast('現在地を取得中... ◎ボタンで位置情報をONにしてください');
+    return;
+  }
+  startPoint = {
+    latlng: [currentPos[1], currentPos[0]],
+    coords: currentPos,
+    name: '📡 現在地'
+  };
+  tourResult = null; clearTourVisuals(); updateTourPanel(); renderStartMarker();
+  showToast('スタート地点を現在地に設定しました');
+}
+
+function setStartFromSearch(lat, lng, name) {
+  startPoint = { latlng: [lat, lng], coords: [lng, lat], name: `🚩 ${name}` };
+  tourResult = null; clearTourVisuals(); updateTourPanel(); renderStartMarker();
+  showToast(`「${name}」をスタート地点に設定しました`);
+}
+
+function clearStartPoint() {
+  startPoint = null;
+  tourResult = null; clearTourVisuals(); updateTourPanel(); renderStartMarker();
+  showToast('スタート地点をリセットしました（現在地/東京駅を使用）');
+}
+
+function getEffectiveStartPos() {
+  if (startPoint) return startPoint.coords;
+  return currentPos || [139.767, 35.681];
+}
+
+function renderStartMarker() {
+  if (startMarker) { map.removeLayer(startMarker); startMarker = null; }
+  if (!startPoint || tourResult) return;
+  startMarker = L.marker([startPoint.latlng[0], startPoint.latlng[1]], {
+    icon: L.divIcon({
+      className: '',
+      html: `<div style="position:relative;display:flex;flex-direction:column;align-items:center">
+        <div style="background:var(--accent);color:#0f1923;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;box-shadow:0 2px 8px rgba(0,229,160,0.5);border:2px solid #fff;flex-shrink:0">S</div>
+        <div style="background:rgba(26,39,51,0.92);color:#00e5a0;font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;border:1px solid rgba(0,229,160,0.4);white-space:nowrap;margin-top:3px;max-width:120px;overflow:hidden;text-overflow:ellipsis">${startPoint.name}</div>
+      </div>`,
+      iconSize: [26, 52], iconAnchor: [13, 13],
+    }),
+    zIndexOffset: 700,
+  }).addTo(map);
+}
+
+// ── ヘッダー検索 ──
+let _lastHdrSearchTime = 0;
+async function doHeaderSearch() {
+  const input = document.getElementById('header-search-input');
+  const dropdown = document.getElementById('header-search-dropdown');
+  const q = input.value.trim();
+  if (!q) { closeHeaderDropdown(); return; }
+
+  const now = Date.now();
+  if (now - _lastHdrSearchTime < 1000) { showToast('少し待ってから再試行してください'); return; }
+  _lastHdrSearchTime = now;
+
+  dropdown.innerHTML = '<div class="hdr-search-empty">検索中...</div>';
+  dropdown.classList.add('open');
+
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&countrycodes=jp&limit=5&accept-language=ja`;
+    const res = await fetch(url, { headers: { 'Accept-Language': 'ja', 'User-Agent': 'CityVisitTracker/1.0' } });
+    const data = await res.json();
+    if (!data || data.length === 0) {
+      dropdown.innerHTML = '<div class="hdr-search-empty">見つかりませんでした</div>';
+      return;
+    }
+    dropdown.innerHTML = data.map(item => {
+      const name = item.display_name.split(',')[0];
+      const addr = item.display_name.split(',').slice(1, 3).join(',').trim();
+      const lat = parseFloat(item.lat).toFixed(6);
+      const lng = parseFloat(item.lon).toFixed(6);
+      const safeName = name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      return `<div class="hdr-search-result"
+                   onmouseenter="showSearchPreviewMarker(${lat},${lng},'${safeName}')"
+                   ontouchstart="showSearchPreviewMarker(${lat},${lng},'${safeName}')">
+        <div class="hdr-result-name">${name}</div>
+        <div class="hdr-result-addr">${addr}</div>
+        <div class="hdr-result-actions">
+          <button class="hdr-add-start" onclick="setStartFromSearch(${lat},${lng},'${safeName}');closeHeaderDropdown()">🚩 スタート</button>
+          <button class="hdr-add-via" onclick="addSearchResultAsSpot(${lat},${lng},'${safeName}');closeHeaderDropdown()">📌 経由</button>
+          <button class="hdr-add-goal" onclick="addSearchResultAsGoal(${lat},${lng},'${safeName}');closeHeaderDropdown()">🏁 ゴール</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    dropdown.innerHTML = '<div class="hdr-search-empty">検索に失敗しました</div>';
+  }
+}
+
+function closeHeaderDropdown() {
+  const dd = document.getElementById('header-search-dropdown');
+  dd.classList.remove('open');
+  dd.innerHTML = '';
+  clearSearchPreviewMarkers();
+}
+
 // ポップアップから直接経由地追加（クリック座標）
 function addClickAsSpot(lat, lng) {
   map.closePopup();
@@ -1238,10 +1507,9 @@ function addBoundaryAsSpot(cityCode) {
   }
   const feature = findFeatureByCode(cityCode);
   if (!feature) return;
-  const pos = currentPos || [139.767, 35.681];
+  const pos = getEffectiveStartPos();
   const result = findNearestBoundaryPoint(turf.point(pos), feature);
   let coords;
-  if (result.inside) {
     coords = turf.centroid(feature).geometry.coordinates;
   } else {
     coords = result.point;

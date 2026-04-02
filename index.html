@@ -741,6 +741,7 @@ function toggleTourItem(cityCode) {
 
 function clearTour() {
   tourList.forEach(t => resetLayerStyle(t.feature));
+  customSpots.forEach(s => { if (s.type === 'boundary' && s.feature) resetLayerStyle(s.feature); });
   tourList = []; tourResult = null;
   goalPoint = null; startPoint = null; customSpots = []; spotMode = null;
   if (startMarker) { map.removeLayer(startMarker); startMarker = null; }
@@ -893,35 +894,48 @@ function calculateTour() {
   }, 50);
 }
 
+function resolveItemEntryPoint(pos, item) {
+  if (item.type === 'city') {
+    const r = findNearestBoundaryPoint(pos, item.feature);
+    return { ep: r.inside ? turf.centroid(item.feature).geometry.coordinates : r.point, dist: r.distance };
+  } else if (item.type === 'boundary') {
+    const r = findNearestBoundaryPoint(pos, item.feature);
+    const centroid = turf.centroid(item.feature).geometry.coordinates;
+    return {
+      ep: r.inside ? centroid : r.point,
+      dist: r.distance,
+      centroid,
+      boundaryFeature: item.feature,
+      isBoundary: true,
+    };
+  } else {
+    return { ep: item.coords, dist: turf.distance(pos, turf.point(item.coords)) };
+  }
+}
+
 function nnTourMixed(start, items, goal) {
   const rem = [...items], ordered = [];
   let pos = start;
   while (rem.length > 0) {
-    let bi = -1, bd = Infinity, bp = null, bItem = null;
+    let bi = -1, bd = Infinity, bResolved = null, bItem = null;
     for (let i = 0; i < rem.length; i++) {
-      const item = rem[i];
-      let d, p;
-      if (item.type === 'city') {
-        const r = findNearestBoundaryPoint(pos, item.feature);
-        d = r.distance;
-        p = r.inside ? turf.centroid(item.feature).geometry.coordinates : r.point;
-      } else {
-        d = turf.distance(pos, turf.point(item.coords));
-        p = item.coords;
-      }
-      // ゴールがある場合：残り1つなら「現在地→候補→ゴール」の合計で比較
+      const resolved = resolveItemEntryPoint(pos, rem[i]);
+      let d = resolved.dist;
       if (goal && rem.length === 1) {
-        d += turf.distance(turf.point(p), turf.point(goal.coords));
+        d += turf.distance(turf.point(resolved.ep), turf.point(goal.coords));
       }
-      if (d < bd) { bd=d; bi=i; bp=p; bItem=item; }
+      if (d < bd) { bd = d; bi = i; bResolved = resolved; bItem = rem[i]; }
     }
     ordered.push({
       feature: bItem.type === 'city' ? bItem.feature : null,
-      name: bItem.type === 'spot' ? bItem.name : null,
-      entryPoint: bp,
-      distance: turf.distance(pos, turf.point(bp)),
+      name: (bItem.type === 'spot' || bItem.type === 'boundary') ? bItem.name : null,
+      entryPoint: bResolved.ep,
+      distance: bResolved.dist,
+      isBoundary: bResolved.isBoundary || false,
+      centroid: bResolved.centroid || null,
+      boundaryFeature: bResolved.boundaryFeature || null,
     });
-    pos = turf.point(bp); rem.splice(bi, 1);
+    pos = turf.point(bResolved.ep); rem.splice(bi, 1);
   }
   return ordered;
 }
@@ -931,28 +945,21 @@ function bruteForceTourMixed(start, items, goal) {
   for (const perm of permutations(items)) {
     let d = 0, pos = start; const route = [];
     for (const item of perm) {
-      let ep, dist;
-      if (item.type === 'city') {
-        const r = findNearestBoundaryPoint(pos, item.feature);
-        ep = r.inside ? turf.centroid(item.feature).geometry.coordinates : r.point;
-        dist = r.distance;
-      } else {
-        ep = item.coords;
-        dist = turf.distance(pos, turf.point(item.coords));
-      }
-      d += dist;
+      const resolved = resolveItemEntryPoint(pos, item);
+      d += resolved.dist;
       route.push({
         feature: item.type === 'city' ? item.feature : null,
-        name: item.type === 'spot' ? item.name : null,
-        entryPoint: ep, distance: dist,
+        name: (item.type === 'spot' || item.type === 'boundary') ? item.name : null,
+        entryPoint: resolved.ep,
+        distance: resolved.dist,
+        isBoundary: resolved.isBoundary || false,
+        centroid: resolved.centroid || null,
+        boundaryFeature: resolved.boundaryFeature || null,
       });
-      pos = turf.point(ep);
+      pos = turf.point(resolved.ep);
     }
-    // ゴールがある場合はゴールまでの距離も合計に含めて比較
-    if (goal) {
-      d += turf.distance(pos, turf.point(goal.coords));
-    }
-    if (d < bestD) { bestD=d; best=route; }
+    if (goal) d += turf.distance(pos, turf.point(goal.coords));
+    if (d < bestD) { bestD = d; best = route; }
   }
   return best;
 }
@@ -980,14 +987,18 @@ function renderTourOnMap(startPos) {
     ).addTo(map));
   }
   tourResult.forEach((s, i) => {
-    const bgColor = s.feature ? '#ffcc00' : '#9c27b0';
-    tourMarkers.push(L.marker([s.entryPoint[1], s.entryPoint[0]], {
+    // boundaryは重心に表示、それ以外はentryPoint
+    const dispPos = s.isBoundary && s.centroid ? s.centroid : s.entryPoint;
+    const bgColor = s.isBoundary ? '#e65100' : (s.feature ? '#ffcc00' : '#9c27b0');
+    tourMarkers.push(L.marker([dispPos[1], dispPos[0]], {
       icon: L.divIcon({
         className: '',
         html: `<div style="width:28px;height:28px;border-radius:50%;background:${bgColor};color:#fff;font-family:'JetBrains Mono',monospace;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.4);border:2px solid #fff">${i+1}</div>`,
         iconSize:[28,28], iconAnchor:[14,14],
       }),
     }).addTo(map));
+    // boundaryのハイライト色を維持
+    if (s.isBoundary && s.boundaryFeature) highlightFeature(s.boundaryFeature);
   });
   if (goalPoint) {
     tourMarkers.push(L.marker([goalPoint.latlng[0], goalPoint.latlng[1]], {
@@ -1004,6 +1015,8 @@ function renderTourOnMap(startPos) {
 function clearTourVisuals() {
   tourMarkers.forEach(m=>map.removeLayer(m)); tourLines.forEach(l=>map.removeLayer(l));
   tourMarkers=[]; tourLines=[];
+  // boundary経由地のハイライトを再適用（計算後に色がリセットされないよう）
+  customSpots.forEach(s => { if (s.type === 'boundary' && s.feature) highlightFeature(s.feature); });
 }
 
 function clearStaticSpotMarkers() {
@@ -1014,16 +1027,21 @@ function clearStaticSpotMarkers() {
 // 計算前の経由地・ゴールをラベル付きマーカーで表示
 function renderStaticSpotMarkers() {
   clearStaticSpotMarkers();
-  if (tourResult) return; // 計算後はtourMarkersに任せる
+  if (tourResult) return;
 
-  customSpots.forEach((s, i) => {
+  customSpots.forEach((s) => {
     const label = s.name.replace(/^📌\s*/, '').replace(/^🗺\s*/, '');
+    const isBoundary = s.type === 'boundary';
+    const bg = isBoundary ? '#e65100' : '#9c27b0';
+    const color = isBoundary ? '#ffcc80' : '#c77dff';
+    const borderColor = isBoundary ? 'rgba(230,81,0,0.4)' : 'rgba(156,33,176,0.4)';
+    const icon = isBoundary ? '🗺' : '📌';
     staticSpotMarkers.push(L.marker([s.latlng[0], s.latlng[1]], {
       icon: L.divIcon({
         className: '',
         html: `<div style="position:relative;display:flex;flex-direction:column;align-items:center">
-          <div style="background:#9c27b0;color:#fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,0.5);border:2px solid #fff;flex-shrink:0">📌</div>
-          <div style="background:rgba(26,39,51,0.92);color:#c77dff;font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;border:1px solid rgba(156,33,176,0.4);white-space:nowrap;margin-top:3px;max-width:120px;overflow:hidden;text-overflow:ellipsis">${label}</div>
+          <div style="background:${bg};color:#fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,0.5);border:2px solid #fff;flex-shrink:0">${icon}</div>
+          <div style="background:rgba(26,39,51,0.92);color:${color};font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;border:1px solid ${borderColor};white-space:nowrap;margin-top:3px;max-width:120px;overflow:hidden;text-overflow:ellipsis">${label}</div>
         </div>`,
         iconSize: [26, 52], iconAnchor: [13, 13],
       }),
@@ -1073,13 +1091,15 @@ function recalcTourResultDistances() {
   let prev = turf.point(pos);
   for (let i = 0; i < tourResult.length; i++) {
     const s = tourResult[i];
-    if (s.feature) {
-      // 市区町村: 前の点から境界最寄り点を再計算
-      const r = findNearestBoundaryPoint(prev, s.feature);
-      s.entryPoint = r.inside ? turf.centroid(s.feature).geometry.coordinates : r.point;
+    if (s.feature || s.isBoundary) {
+      const feature = s.feature || s.boundaryFeature;
+      const r = findNearestBoundaryPoint(prev, feature);
+      s.entryPoint = r.inside ? turf.centroid(feature).geometry.coordinates : r.point;
       s.distance = r.distance;
+      if (s.isBoundary) {
+        s.centroid = turf.centroid(feature).geometry.coordinates;
+      }
     } else {
-      // カスタムスポット: そのままの座標で距離だけ更新
       s.distance = turf.distance(prev, turf.point(s.entryPoint));
     }
     prev = turf.point(s.entryPoint);
@@ -1347,17 +1367,19 @@ function addBoundaryAsSpot(cityCode) {
   }
   const feature = findFeatureByCode(cityCode);
   if (!feature) return;
-  const pos = currentPos || [139.767, 35.681];
-  const result = findNearestBoundaryPoint(turf.point(pos), feature);
-  let coords;
-  if (result.inside) {
-    coords = turf.centroid(feature).geometry.coordinates;
-  } else {
-    coords = result.point;
-  }
   const p = feature.properties;
   const name = `🗺 ${p[CONFIG.props.cityName]}（境界）`;
-  customSpots.push({ latlng: [coords[1], coords[0]], coords, name });
+  // centroid を表示位置として保持。境界エントリー点はルート計算時に直前地点から動的決定
+  const centroidCoords = turf.centroid(feature).geometry.coordinates;
+  customSpots.push({
+    type: 'boundary',
+    feature,
+    latlng: [centroidCoords[1], centroidCoords[0]],
+    coords: centroidCoords,  // 表示マーカー用（重心）
+    name,
+  });
+  // 地域の色をハイライト
+  highlightFeature(feature);
   tourResult = null; clearTourVisuals(); updateTourPanel();
   showToast('境界経由地を追加しました');
 }
@@ -1372,6 +1394,8 @@ function addClickAsGoal(lat, lng) {
 }
 
 function removeCustomSpot(idx) {
+  const spot = customSpots[idx];
+  if (spot.type === 'boundary' && spot.feature) resetLayerStyle(spot.feature);
   customSpots.splice(idx, 1);
   tourResult = null; clearTourVisuals(); updateTourPanel();
 }

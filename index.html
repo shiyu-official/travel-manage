@@ -835,14 +835,18 @@ function updateTourPanel() {
       </div>`;
     }).join('');
     let totalDist = tourResult.reduce((s,r)=>s+r.distance,0);
+    const totalRoadMin = tourResult.some(r => r.roadDuration != null)
+      ? Math.round(tourResult.reduce((s,r) => s + (r.roadDuration ?? 0), 0) / 60)
+      : null;
     let suffix = '';
     if (goalPoint && tourResult.length > 0) {
       const lastPt = tourResult[tourResult.length-1].entryPoint;
-      const gDist = turf.distance(turf.point(lastPt), turf.point(goalPoint.coords));
-      totalDist += gDist;
+      totalDist += turf.distance(turf.point(lastPt), turf.point(goalPoint.coords));
       suffix = ` → 🏁`;
     }
-    totalEl.textContent = `合計直線距離: ${totalDist.toFixed(1)}km${suffix} ※実道路はGMで確認`;
+    totalEl.textContent = totalRoadMin != null
+      ? `道路距離順で最適化済み・約${totalRoadMin}分${suffix} ※GMで確認`
+      : `合計直線距離: ${totalDist.toFixed(1)}km${suffix} ※実道路はGMで確認`;
     totalEl.style.display = 'block';
     calcAct.style.display = 'none'; gmapsAct.style.display = 'flex';
   } else {
@@ -873,7 +877,6 @@ function calculateTour() {
   const pos = getEffectiveStartPos();
   if (!startPoint && !currentPos) showToast('現在地未取得：東京駅を起点とします');
 
-  // Build mixed list: city / boundary / spot
   const items = [
     ...tourList.map(t => ({ type: 'city', feature: t.feature })),
     ...customSpots.map(s => s.type === 'boundary'
@@ -882,20 +885,100 @@ function calculateTour() {
     ),
   ];
 
-  const start = turf.point(pos);
   showToast('ルートを計算中...');
   setTimeout(async () => {
-    tourResult = items.length <= CONFIG.routing.bruteForceThreshold
-      ? bruteForceTourMixed(start, items, goalPoint) : nnTourMixed(start, items, goalPoint);
+    // Step1: 各アイテムの候補エントリー点を直線距離で算出（境界スナップ）
+    const start = turf.point(pos);
+    const rawResult = items.length <= CONFIG.routing.bruteForceThreshold
+      ? bruteForceTourMixed(start, items, goalPoint)
+      : nnTourMixed(start, items, goalPoint);
 
-    // 各エントリー点を道路にスナップ
-    showToast('道路にスナップ中...');
-    await snapTourResultToRoads();
+    // Step2: 全エントリー点をまず道路にスナップ
+    showToast('道路距離で最適化中...');
+    const snappedEntries = await Promise.all(
+      rawResult.map(s => snapPointToRoad(s.entryPoint))
+    );
+    rawResult.forEach((s, i) => { s.entryPoint = snappedEntries[i]; });
+
+    // Step3: OSRM table APIで道路距離行列を取得して順序再最適化
+    const goalCoords = goalPoint ? await snapPointToRoad(goalPoint.coords) : null;
+    tourResult = await reorderByRoadDistance(pos, rawResult, goalCoords);
 
     renderTourOnMap(pos);
     updateTourPanel();
     showToast('巡回ルートを計算しました');
   }, 50);
+}
+
+// OSRM table API で全点間の道路距離行列を取得
+async function fetchRoadDistanceMatrix(coords) {
+  // coords: [[lng,lat], ...]
+  const coordStr = coords.map(c => `${c[0]},${c[1]}`).join(';');
+  try {
+    const res = await fetch(
+      `https://router.project-osrm.org/table/v1/driving/${coordStr}?annotations=duration`,
+      { signal: AbortSignal.timeout(8000) }
+    );
+    const data = await res.json();
+    if (data.code === 'Ok') return data.durations; // 秒数の行列
+  } catch (e) {}
+  return null; // 失敗時はnull → 直線距離フォールバック
+}
+
+// 道路距離行列を使って順序を再最適化
+async function reorderByRoadDistance(startPos, stops, goalCoords) {
+  // 全座標を並べる: [スタート, ...経由地, (ゴール)]
+  const allCoords = [startPos, ...stops.map(s => s.entryPoint)];
+  if (goalCoords) allCoords.push(goalCoords);
+
+  const matrix = await fetchRoadDistanceMatrix(allCoords);
+  if (!matrix) return stops; // API失敗 → 元の順序のまま
+
+  const n = stops.length;
+  // matrix[0] = スタートからの距離, matrix[1..n] = 各経由地から
+  // goalは matrix[n+1]（あれば）
+
+  // NN法で道路時間ベースの順序最適化
+  if (n > CONFIG.routing.bruteForceThreshold) {
+    return nnByMatrix(matrix, stops, n, goalCoords);
+  } else {
+    return bruteForceByMatrix(matrix, stops, n, goalCoords);
+  }
+}
+
+function nnByMatrix(matrix, stops, n, goalCoords) {
+  const rem = stops.map((s, i) => ({ s, matIdx: i + 1 })); // matrix内のインデックス(0=start)
+  const ordered = [];
+  let curMatIdx = 0; // スタート
+  while (rem.length > 0) {
+    let best = null, bestDur = Infinity;
+    for (const item of rem) {
+      let dur = matrix[curMatIdx][item.matIdx];
+      // 残り1つでゴールあり → ゴールまでの時間も加算
+      if (goalCoords && rem.length === 1) {
+        dur += matrix[item.matIdx][n + 1];
+      }
+      if (dur < bestDur) { bestDur = dur; best = item; }
+    }
+    ordered.push({ ...best.s, roadDuration: matrix[curMatIdx][best.matIdx] });
+    curMatIdx = best.matIdx;
+    rem.splice(rem.indexOf(best), 1);
+  }
+  return ordered;
+}
+
+function bruteForceByMatrix(matrix, stops, n, goalCoords) {
+  const indices = stops.map((_, i) => i);
+  let best = null, bestDur = Infinity;
+  for (const perm of permutations(indices)) {
+    let dur = matrix[0][perm[0] + 1];
+    for (let i = 0; i < perm.length - 1; i++) {
+      dur += matrix[perm[i] + 1][perm[i + 1] + 1];
+    }
+    if (goalCoords) dur += matrix[perm[perm.length - 1] + 1][n + 1];
+    if (dur < bestDur) { bestDur = dur; best = perm; }
+  }
+  return best.map(i => stops[i]);
 }
 
 // OSRM nearest API で1点を道路上にスナップ
@@ -916,13 +999,9 @@ async function snapPointToRoad(lngLat) {
   return lngLat;
 }
 
-// tourResult の全エントリー点を並列スナップ
-async function snapTourResultToRoads() {
-  if (!tourResult) return;
-  const snapped = await Promise.all(
-    tourResult.map(s => snapPointToRoad(s.entryPoint))
-  );
-  snapped.forEach((pt, i) => { tourResult[i].entryPoint = pt; });
+// tourResult の全エントリー点を並列スナップ（外部からも使用）
+async function snapAllPoints(points) {
+  return Promise.all(points.map(p => snapPointToRoad(p)));
 }
 
 function resolveItemEntryPoint(pos, item) {
